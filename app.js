@@ -82,8 +82,8 @@ class VoteProApp {
       .then(res => res.json())
       .then(state => {
         if (state) {
-          if (Array.isArray(state.candidates)) {
-            this.candidates = state.candidates;
+          if (Array.isArray(state.candidates) && state.candidates.length > 0) {
+            this.mergeCandidates(state.candidates);
           }
           if (state.status) {
             this.status = state.status;
