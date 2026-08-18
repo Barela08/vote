@@ -103,6 +103,13 @@ class VoteProApp {
         }
       }
 
+      if (state.endTime !== undefined) {
+        this.endTime = state.endTime;
+        if (this.status === 'LIVE' && this.endTime) {
+          const remSecs = Math.max(0, Math.ceil((this.endTime - Date.now()) / 1000));
+          this.timeRemaining = remSecs;
+        }
+      }
       if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
         this.timeRemaining = state.timeRemaining;
       }
@@ -241,15 +248,26 @@ class VoteProApp {
     const savedDuration = localStorage.getItem('votepro_total_duration');
     if (savedDuration !== null) this.totalDuration = parseInt(savedDuration, 10);
 
+    const savedEndTime = localStorage.getItem('votepro_end_time');
+    if (savedEndTime) this.endTime = parseInt(savedEndTime, 10);
+
     const savedUserVoted = localStorage.getItem('votepro_user_voted');
     if (savedUserVoted) this.userVotedCandidateId = savedUserVoted;
 
     // Start timer loop ONLY if Admin has explicitly set election status to LIVE
     if (this.status === 'LIVE') {
-      if (this.timeRemaining <= 0) {
-        this.timeRemaining = this.totalDuration > 0 ? this.totalDuration : 300;
+      if (this.endTime) {
+        const remSecs = Math.max(0, Math.ceil((this.endTime - Date.now()) / 1000));
+        this.timeRemaining = remSecs;
+        if (remSecs <= 0) {
+          this.status = 'ENDED';
+        }
       }
-      this.startTimerLoop();
+      if (this.status === 'LIVE') {
+        this.startTimerLoop();
+      } else {
+        setTimeout(() => this.showWinnerModal(), 500);
+      }
     } else if (this.status === 'ENDED') {
       // If completed, show winner modal on load
       setTimeout(() => this.showWinnerModal(), 500);
@@ -265,12 +283,29 @@ class VoteProApp {
     localStorage.setItem('votepro_status', this.status);
     localStorage.setItem('votepro_time_remaining', this.timeRemaining.toString());
     localStorage.setItem('votepro_total_duration', this.totalDuration.toString());
+    if (this.endTime) {
+      localStorage.setItem('votepro_end_time', this.endTime.toString());
+    }
     if (this.userVotedCandidateId) {
       localStorage.setItem('votepro_user_voted', this.userVotedCandidateId);
     } else {
       localStorage.removeItem('votepro_user_voted');
     }
+
     this.broadcastSupabaseState();
+
+    fetch('/api/admin/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        candidates: this.candidates,
+        status: this.status,
+        timeRemaining: this.timeRemaining,
+        totalDuration: this.totalDuration,
+        endTime: this.endTime,
+        lastUpdated: this.lastUpdated
+      })
+    }).catch(() => {});
   }
 
   /* ==========================================
@@ -581,9 +616,10 @@ class VoteProApp {
     }
 
     if (this.timeRemaining <= 0) {
-      this.timeRemaining = this.totalDuration;
+      this.timeRemaining = this.totalDuration > 0 ? this.totalDuration : 300;
     }
 
+    this.endTime = Date.now() + (this.timeRemaining * 1000);
     this.status = 'LIVE';
     this.saveState();
     this.startTimerLoop();
@@ -593,27 +629,40 @@ class VoteProApp {
 
   pauseElection() {
     this.status = 'PAUSED';
-    clearInterval(this.timerInterval);
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
     this.saveState();
     this.render();
     this.logAudit('System', 'Voting paused by Admin.');
   }
 
   startTimerLoop() {
-    clearInterval(this.timerInterval);
-    this.timerInterval = setInterval(() => {
-      if (this.timeRemaining > 0) {
-        this.timeRemaining--;
-        this.updateTimerDisplay();
+    if (this.timerInterval) clearInterval(this.timerInterval);
 
-        // Optional tick sound during final 10 seconds
-        if (this.timeRemaining <= 10 && this.timeRemaining > 0) {
-          this.playSound('tick');
-        }
-      } else {
-        // Timer reached 0:00!
+    if (!this.endTime || this.endTime <= Date.now()) {
+      this.endTime = Date.now() + (this.timeRemaining * 1000);
+    }
+
+    this.timerInterval = setInterval(() => {
+      if (this.status !== 'LIVE') {
         clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        return;
+      }
+
+      const remMs = this.endTime - Date.now();
+      const remSecs = Math.max(0, Math.ceil(remMs / 1000));
+      this.timeRemaining = remSecs;
+      this.updateTimerDisplay();
+
+      if (remSecs <= 0) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
         this.endElection();
+      } else if (remSecs <= 10) {
+        this.playSound('tick');
       }
     }, 1000);
   }

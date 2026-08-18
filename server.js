@@ -120,8 +120,8 @@ const server = http.createServer((req, res) => {
         if (payload.status) electionState.status = payload.status;
         if (payload.totalDuration !== undefined) electionState.totalDuration = payload.totalDuration;
         if (payload.timeRemaining !== undefined) electionState.timeRemaining = payload.timeRemaining;
-        
-        broadcastState();
+        if (payload.endTime !== undefined) electionState.endTime = payload.endTime;
+        electionState.lastUpdated = Date.now();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, state: electionState }));
       } catch (e) {

@@ -122,6 +122,7 @@ module.exports = (req, res) => {
       }
       if (body.totalDuration !== undefined) globalState.totalDuration = body.totalDuration;
       if (body.timeRemaining !== undefined) globalState.timeRemaining = body.timeRemaining;
+      if (body.endTime !== undefined) globalState.endTime = body.endTime;
       globalState.lastUpdated = Date.now();
       syncToSupabase(globalState);
       return sendJSON(res, 200, { success: true, state: globalState });
