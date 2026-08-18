@@ -43,11 +43,29 @@ class VoteProApp {
 
   init() {
     this.loadStateFromStorage();
+    this.fetchServerState();
     this.bindEvents();
     this.checkRoute();
     this.render();
     this.updateTimerDisplay();
     this.setupRealtimeSync();
+  }
+
+  fetchServerState() {
+    fetch('/api/state')
+      .then(res => res.json())
+      .then(state => {
+        if (state && Array.isArray(state.candidates) && state.candidates.length > 0) {
+          this.candidates = state.candidates;
+          if (state.status) this.status = state.status;
+          if (state.timeRemaining !== undefined) this.timeRemaining = state.timeRemaining;
+          if (state.totalDuration !== undefined) this.totalDuration = state.totalDuration;
+          this.saveCandidates();
+          this.render();
+          this.updateTimerDisplay();
+        }
+      })
+      .catch(() => {});
   }
 
   setupRealtimeSync() {
@@ -56,11 +74,12 @@ class VoteProApp {
       try {
         const channel = supabaseClient.channel('election_realtime_channel');
         channel.on('broadcast', { event: 'state_update' }, (payload) => {
-          if (payload && payload.payload && payload.payload.candidates) {
+          if (payload && payload.payload && Array.isArray(payload.payload.candidates) && payload.payload.candidates.length > 0) {
             const state = payload.payload;
             this.candidates = state.candidates;
             this.status = state.status;
             if (state.timeRemaining !== undefined) this.timeRemaining = state.timeRemaining;
+            this.saveCandidates();
             this.render();
             this.updateTimerDisplay();
           }
@@ -75,11 +94,12 @@ class VoteProApp {
       source.onmessage = (e) => {
         try {
           const state = JSON.parse(e.data);
-          if (state && state.candidates) {
+          if (state && Array.isArray(state.candidates) && state.candidates.length > 0) {
             this.candidates = state.candidates;
             this.status = state.status;
             this.totalDuration = state.totalDuration;
             this.timeRemaining = state.timeRemaining;
+            this.saveCandidates();
             this.render();
             this.updateTimerDisplay();
 
@@ -107,6 +127,32 @@ class VoteProApp {
         }).catch(() => {});
       } catch (e) {}
     }
+  }
+
+  saveState() {
+    this.saveCandidates();
+    localStorage.setItem('votepro_status', this.status);
+    localStorage.setItem('votepro_time_remaining', this.timeRemaining.toString());
+    localStorage.setItem('votepro_total_duration', this.totalDuration.toString());
+    if (this.userVotedCandidateId) {
+      localStorage.setItem('votepro_user_voted', this.userVotedCandidateId);
+    } else {
+      localStorage.removeItem('votepro_user_voted');
+    }
+
+    this.broadcastSupabaseState();
+
+    // Persist candidates and status to Vercel Server API
+    fetch('/api/admin/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        candidates: this.candidates,
+        status: this.status,
+        timeRemaining: this.timeRemaining,
+        totalDuration: this.totalDuration
+      })
+    }).catch(() => {});
   }
 
   /* ==========================================
