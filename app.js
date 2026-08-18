@@ -86,37 +86,33 @@ class VoteProApp {
 
   applyServerState(state) {
     if (!state) return;
-    const serverTimestamp = state.lastUpdated || 0;
 
-    if (serverTimestamp >= this.lastUpdated) {
-      this.lastUpdated = serverTimestamp;
-      if (Array.isArray(state.candidates) && state.candidates.length > 0) {
-        this.mergeCandidates(state.candidates);
-      }
-      if (state.status) {
-        this.status = state.status;
-        if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
-          if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-          }
-        } else if (this.status === 'LIVE' && !this.timerInterval) {
-          this.startTimerLoop();
+    if (Array.isArray(state.candidates)) {
+      this.mergeCandidates(state.candidates);
+    }
+
+    if (state.status) {
+      this.status = state.status;
+      if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+          this.timerInterval = null;
         }
-      }
-      if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
-        this.timeRemaining = state.timeRemaining;
-      }
-      if (state.totalDuration !== undefined) this.totalDuration = state.totalDuration;
-      this.saveCandidates();
-      this.render();
-      this.updateTimerDisplay();
-    } else {
-      if (Array.isArray(state.candidates) && state.candidates.length > 0) {
-        this.mergeCandidates(state.candidates);
-        this.render();
+      } else if (this.status === 'LIVE' && !this.timerInterval) {
+        this.startTimerLoop();
       }
     }
+
+    if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
+      this.timeRemaining = state.timeRemaining;
+    }
+    if (state.totalDuration !== undefined) {
+      this.totalDuration = state.totalDuration;
+    }
+
+    this.saveCandidates();
+    this.render();
+    this.updateTimerDisplay();
   }
 
   fetchServerState() {
