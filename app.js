@@ -30,6 +30,7 @@ class VoteProApp {
     this.soundEnabled = true;
     this.adminPin = '5459';
     this.supabaseChannel = null;
+    this.lastUpdated = 0;
 
     // Audio Context
     this.audioCtx = null;
@@ -77,32 +78,45 @@ class VoteProApp {
     this.candidates = Array.from(candMap.values());
   }
 
+  applyServerState(state) {
+    if (!state) return;
+    const serverTimestamp = state.lastUpdated || 0;
+
+    if (serverTimestamp >= this.lastUpdated) {
+      this.lastUpdated = serverTimestamp;
+      if (Array.isArray(state.candidates) && state.candidates.length > 0) {
+        this.mergeCandidates(state.candidates);
+      }
+      if (state.status) {
+        this.status = state.status;
+        if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
+          if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+          }
+        } else if (this.status === 'LIVE' && !this.timerInterval) {
+          this.startTimerLoop();
+        }
+      }
+      if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
+        this.timeRemaining = state.timeRemaining;
+      }
+      if (state.totalDuration !== undefined) this.totalDuration = state.totalDuration;
+      this.saveCandidates();
+      this.render();
+      this.updateTimerDisplay();
+    } else {
+      if (Array.isArray(state.candidates) && state.candidates.length > 0) {
+        this.mergeCandidates(state.candidates);
+        this.render();
+      }
+    }
+  }
+
   fetchServerState() {
     fetch('/api/state')
       .then(res => res.json())
-      .then(state => {
-        if (state) {
-          if (Array.isArray(state.candidates) && state.candidates.length > 0) {
-            this.mergeCandidates(state.candidates);
-          }
-          if (state.status) {
-            this.status = state.status;
-            if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
-              clearInterval(this.timerInterval);
-              this.timerInterval = null;
-            } else if (this.status === 'LIVE' && !this.timerInterval) {
-              this.startTimerLoop();
-            }
-          }
-          if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
-            this.timeRemaining = state.timeRemaining;
-          }
-          if (state.totalDuration !== undefined) this.totalDuration = state.totalDuration;
-          this.saveCandidates();
-          this.render();
-          this.updateTimerDisplay();
-        }
-      })
+      .then(state => this.applyServerState(state))
       .catch(() => {});
   }
 
@@ -113,24 +127,7 @@ class VoteProApp {
         const channel = supabaseClient.channel('election_realtime_channel');
         channel.on('broadcast', { event: 'state_update' }, (payload) => {
           if (payload && payload.payload) {
-            const state = payload.payload;
-            if (Array.isArray(state.candidates) && state.candidates.length > 0) {
-              this.mergeCandidates(state.candidates);
-            }
-            if (state.status) {
-              this.status = state.status;
-              if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
-                clearInterval(this.timerInterval);
-              } else if (this.status === 'LIVE' && !this.timerInterval) {
-                this.startTimerLoop();
-              }
-            }
-            if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
-              this.timeRemaining = state.timeRemaining;
-            }
-            this.saveCandidates();
-            this.render();
-            this.updateTimerDisplay();
+            this.applyServerState(payload.payload);
           }
         }).subscribe();
         this.supabaseChannel = channel;
@@ -143,30 +140,7 @@ class VoteProApp {
       source.onmessage = (e) => {
         try {
           const state = JSON.parse(e.data);
-          if (state) {
-            if (Array.isArray(state.candidates) && state.candidates.length > 0) {
-              this.mergeCandidates(state.candidates);
-            }
-            if (state.status) {
-              this.status = state.status;
-              if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
-                clearInterval(this.timerInterval);
-              } else if (this.status === 'LIVE' && !this.timerInterval) {
-                this.startTimerLoop();
-              }
-            }
-            if (state.totalDuration) this.totalDuration = state.totalDuration;
-            if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
-              this.timeRemaining = state.timeRemaining;
-            }
-            this.saveCandidates();
-            this.render();
-            this.updateTimerDisplay();
-
-            if (this.status === 'ENDED' && document.getElementById('winnerModal').classList.contains('hidden')) {
-              this.showWinnerModal();
-            }
-          }
+          this.applyServerState(state);
         } catch (err) {}
       };
     }
@@ -182,7 +156,8 @@ class VoteProApp {
             candidates: this.candidates,
             status: this.status,
             timeRemaining: this.timeRemaining,
-            totalDuration: this.totalDuration
+            totalDuration: this.totalDuration,
+            lastUpdated: this.lastUpdated
           }
         }).catch(() => {});
       } catch (e) {}
@@ -190,8 +165,10 @@ class VoteProApp {
   }
 
   saveState() {
+    this.lastUpdated = Date.now();
     this.saveCandidates();
     localStorage.setItem('votepro_status', this.status);
+    localStorage.setItem('votepro_last_updated', this.lastUpdated.toString());
     localStorage.setItem('votepro_time_remaining', this.timeRemaining.toString());
     localStorage.setItem('votepro_total_duration', this.totalDuration.toString());
     if (this.userVotedCandidateId) {
@@ -210,7 +187,8 @@ class VoteProApp {
         candidates: this.candidates,
         status: this.status,
         timeRemaining: this.timeRemaining,
-        totalDuration: this.totalDuration
+        totalDuration: this.totalDuration,
+        lastUpdated: this.lastUpdated
       })
     }).catch(() => {});
   }
