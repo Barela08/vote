@@ -289,6 +289,12 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://beeyhmoxvumbmgatwgyp.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZXlobW94dnVtYm1nYXR3Z3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDc0NjcsImV4cCI6MjEwMjYyMzQ2N30.7clcOJ6v-L6PnhS6L_J2cysKfsLz6xrnaQ2Zh-rsiXo";
+    const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
