@@ -614,7 +614,6 @@ class VoteProApp {
       if (this.timeRemaining > 0) {
         this.timeRemaining--;
         this.updateTimerDisplay();
-        this.saveState();
 
         // Optional tick sound during final 10 seconds
         if (this.timeRemaining <= 10 && this.timeRemaining > 0) {
