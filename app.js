@@ -753,6 +753,11 @@ class VoteProApp {
     if (confirm(`Delete candidate "${cand.name}"?`)) {
       this.candidates = this.candidates.filter((c) => c.id !== candId);
       this.saveState();
+      fetch('/api/admin/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteCandId: candId, candidates: this.candidates })
+      }).catch(() => {});
       this.render();
       this.logAudit('Admin', `Deleted candidate: ${cand.name}`);
     }

@@ -62,6 +62,26 @@ function fetchFromSupabase(callback) {
   }
 }
 
+function mergeServerCandidates(newCandidates) {
+  if (!Array.isArray(newCandidates)) return;
+  const map = new Map();
+  if (Array.isArray(globalState.candidates)) {
+    globalState.candidates.forEach(c => map.set(c.id, c));
+  }
+  newCandidates.forEach(c => {
+    if (map.has(c.id)) {
+      const existing = map.get(c.id);
+      existing.votes = Math.max(existing.votes || 0, c.votes || 0);
+      if (c.name) existing.name = c.name;
+      if (c.party) existing.party = c.party;
+      if (c.avatar) existing.avatar = c.avatar;
+    } else {
+      map.set(c.id, c);
+    }
+  });
+  globalState.candidates = Array.from(map.values());
+}
+
 module.exports = (req, res) => {
   if (req.method === 'OPTIONS') {
     res.statusCode = 200;
@@ -91,8 +111,12 @@ module.exports = (req, res) => {
       }
     }
 
-    if (body && (body.candidates || body.status)) {
-      if (body.candidates) globalState.candidates = body.candidates;
+    if (body && (body.candidates || body.status || body.deleteCandId)) {
+      if (body.deleteCandId) {
+        globalState.candidates = globalState.candidates.filter(c => c.id !== body.deleteCandId);
+      } else if (body.candidates) {
+        mergeServerCandidates(body.candidates);
+      }
       if (body.status) globalState.status = body.status;
       if (body.totalDuration !== undefined) globalState.totalDuration = body.totalDuration;
       if (body.timeRemaining !== undefined) globalState.timeRemaining = body.timeRemaining;
