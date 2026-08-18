@@ -48,6 +48,7 @@ export interface ElectionStateResponse {
   candidates: Candidate[];
   totalVotes: number;
   isAdmin: boolean;
+  hasVoted: boolean; // Indicates if current device/browser already voted in this election
   tieCandidates?: Candidate[];
   winnerCandidate?: Candidate | null;
 }

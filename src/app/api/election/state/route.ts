@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { dbGetElectionState } from '@/lib/db';
 import { isAdminAuthenticated } from '@/lib/auth';
+import { getOrCreateVoterIdentifier, VOTER_ID_COOKIE_NAME } from '@/lib/voterId';
 import { Candidate } from '@/lib/types';
 
 export async function GET() {
   try {
     const isAdmin = await isAdminAuthenticated();
-    const { election, candidates: rawCandidates, votes } = await dbGetElectionState();
+    const { voterId, isNew } = await getOrCreateVoterIdentifier();
+
+    const { election, candidates: rawCandidates, votes, hasVoted } = await dbGetElectionState(voterId);
 
     const totalVotes = votes.length;
 
@@ -54,14 +57,29 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       election,
       candidates,
       totalVotes,
       isAdmin,
+      hasVoted,
       winnerCandidate,
       tieCandidates,
     });
+
+    if (isNew) {
+      response.cookies.set({
+        name: VOTER_ID_COOKIE_NAME,
+        value: voterId,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365, // 1 year persistent cookie
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error('Election state error:', error);
     return NextResponse.json(

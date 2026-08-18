@@ -15,6 +15,7 @@ import {
   VoteIcon,
   WifiOff,
   Sparkles,
+  Lock,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -23,6 +24,7 @@ export default function PublicVotingPage() {
     election,
     candidates,
     totalVotes,
+    hasVoted,
     winnerCandidate,
     tieCandidates,
     remainingTime,
@@ -39,13 +41,13 @@ export default function PublicVotingPage() {
   const status = election?.status || 'NOT_STARTED';
 
   const handleOpenConfirmModal = (candidate: Candidate) => {
-    if (status !== 'ACTIVE') return;
+    if (status !== 'ACTIVE' || hasVoted) return;
     soundEngine.playVoteClick();
     setSelectedCandidate(candidate);
   };
 
   const handleConfirmVote = async () => {
-    if (!selectedCandidate || isSubmitting || status !== 'ACTIVE') return;
+    if (!selectedCandidate || isSubmitting || status !== 'ACTIVE' || hasVoted) return;
 
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -56,7 +58,6 @@ export default function PublicVotingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidate_id: selectedCandidate.id,
-          voter_identifier: `voter_${Math.random().toString(36).substring(2, 9)}`,
         }),
       });
 
@@ -64,14 +65,13 @@ export default function PublicVotingPage() {
 
       if (res.ok && data.success) {
         soundEngine.playVoteClick();
-        setVoteSuccessMessage(`Your vote for ${selectedCandidate.name} has been submitted!`);
+        setVoteSuccessMessage(`✓ VOTE RECORDED! Thank you for voting for ${selectedCandidate.name}`);
         setSelectedCandidate(null);
         refetch();
-
-        // Clear notification after 4 seconds
-        setTimeout(() => setVoteSuccessMessage(null), 4000);
       } else {
-        setErrorMessage(data.message || 'Failed to record vote. Please try again.');
+        setErrorMessage(data.message || 'You have already voted in this election.');
+        setSelectedCandidate(null);
+        refetch();
       }
     } catch (err) {
       setErrorMessage('Network error while submitting vote.');
@@ -98,6 +98,14 @@ export default function PublicVotingPage() {
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center text-xs font-semibold text-amber-400 flex items-center justify-center gap-2">
           <WifiOff className="h-4 w-4" />
           <span>Reconnecting to live election stream...</span>
+        </div>
+      )}
+
+      {/* Persistent "Already Voted" Banner if device voted */}
+      {hasVoted && status === 'ACTIVE' && (
+        <div className="bg-emerald-500/15 border-b border-emerald-500/30 px-4 py-3 text-center text-sm font-bold text-emerald-300 flex items-center justify-center gap-2">
+          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+          <span>✓ VOTE RECORDED — You have already voted in this election.</span>
         </div>
       )}
 
@@ -194,7 +202,7 @@ export default function PublicVotingPage() {
           </div>
         </section>
 
-        {/* WINNER / RESULT ANNOUNCEMENT BANNER */}
+        {/* WINNER ANNOUNCEMENT BANNER */}
         {status === 'ENDED' && winnerCandidate && (
           <section className="glass-modal rounded-3xl p-6 sm:p-10 border border-amber-500/40 text-center glow-gold relative overflow-hidden animate-pulse-slow">
             <div className="absolute top-0 right-0 p-8 text-amber-500/10 pointer-events-none">
@@ -267,14 +275,18 @@ export default function PublicVotingPage() {
               Official Candidates
             </h2>
             <span className="text-xs text-slate-400">
-              {status === 'ACTIVE' ? 'Select candidate to vote' : 'Voting is inactive'}
+              {hasVoted
+                ? 'You have already voted'
+                : status === 'ACTIVE'
+                ? 'Select candidate to vote'
+                : 'Voting is inactive'}
             </span>
           </div>
 
           {candidates.length === 0 ? (
             <div className="glass-card rounded-2xl p-12 text-center text-slate-400 border border-white/10">
               <p className="text-lg font-semibold mb-2">No candidates available</p>
-              <p className="text-xs">Candidates added by admin will appear here in real time.</p>
+              <p className="text-xs">Candidates will appear here in real time when added.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -307,18 +319,27 @@ export default function PublicVotingPage() {
                   {/* Vote Action Button */}
                   <button
                     onClick={() => handleOpenConfirmModal(candidate)}
-                    disabled={status !== 'ACTIVE'}
+                    disabled={status !== 'ACTIVE' || hasVoted}
                     className={`w-full py-3 rounded-xl font-bold text-sm tracking-wide transition-all active:scale-[0.98] ${
-                      status === 'ACTIVE'
+                      hasVoted
+                        ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 cursor-not-allowed flex items-center justify-center gap-2'
+                        : status === 'ACTIVE'
                         ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25 cursor-pointer'
                         : 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/40'
                     }`}
                   >
-                    {status === 'ACTIVE'
-                      ? 'VOTE'
-                      : status === 'NOT_STARTED'
-                      ? 'VOTING NOT STARTED'
-                      : 'VOTING CLOSED'}
+                    {hasVoted ? (
+                      <>
+                        <Lock className="h-4 w-4" />
+                        ALREADY VOTED
+                      </>
+                    ) : status === 'ACTIVE' ? (
+                      'VOTE'
+                    ) : status === 'NOT_STARTED' ? (
+                      'VOTING NOT STARTED'
+                    ) : (
+                      'VOTING CLOSED'
+                    )}
                   </button>
                 </div>
               ))}
@@ -328,7 +349,7 @@ export default function PublicVotingPage() {
       </main>
 
       {/* CONFIRM VOTE MODAL */}
-      {selectedCandidate && (
+      {selectedCandidate && !hasVoted && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="glass-modal w-full max-w-md rounded-2xl p-6 border border-white/20 shadow-2xl text-center">
             <h3 className="text-xl font-extrabold text-white mb-2">Confirm Your Vote</h3>
@@ -356,14 +377,14 @@ export default function PublicVotingPage() {
               <button
                 onClick={() => setSelectedCandidate(null)}
                 disabled={isSubmitting}
-                className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition-colors"
+                className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 CANCEL
               </button>
               <button
                 onClick={handleConfirmVote}
                 disabled={isSubmitting}
-                className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>

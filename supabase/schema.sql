@@ -1,7 +1,5 @@
--- VotePro Complete Supabase Schema Definition
--- Run this script in the Supabase SQL Editor to initialize all tables, storage, and real-time settings.
+-- VotePro Complete Supabase Schema Definition with Unique Public Voter Constraint
 
--- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. ELECTIONS TABLE
@@ -29,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.candidates (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- Add foreign key reference for winner_id in elections if not exists
+-- Foreign key reference for winner_id
 DO $$ 
 BEGIN 
     IF NOT EXISTS (
@@ -52,6 +50,11 @@ CREATE TABLE IF NOT EXISTS public.votes (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- MANDATORY UNIQUE CONSTRAINT FOR PUBLIC VOTES (1 DEVICE/BROWSER = 1 VOTE PER ELECTION)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_public_voter_per_election 
+ON public.votes (election_id, voter_identifier) 
+WHERE (vote_type = 'PUBLIC');
+
 -- 4. AUDIT LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -63,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- INDEXES for fast querying
+-- INDEXES
 CREATE INDEX IF NOT EXISTS idx_candidates_election ON public.candidates(election_id) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_votes_election ON public.votes(election_id);
 CREATE INDEX IF NOT EXISTS idx_votes_candidate ON public.votes(candidate_id);
@@ -73,10 +76,8 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('candidate-photos', 'candidate-photos', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Drop existing storage policies if any to avoid errors
 DROP POLICY IF EXISTS "Public Read Candidates Photos" ON storage.objects;
 DROP POLICY IF EXISTS "Allow Public Upload Candidates Photos" ON storage.objects;
-DROP POLICY IF EXISTS "Allow Service Upload Candidates Photos" ON storage.objects;
 
 CREATE POLICY "Public Read Candidates Photos"
 ON storage.objects FOR SELECT
@@ -86,26 +87,23 @@ CREATE POLICY "Allow Public Upload Candidates Photos"
 ON storage.objects FOR INSERT
 WITH CHECK (bucket_id = 'candidate-photos');
 
--- 6. ENABLE ROW LEVEL SECURITY (RLS)
+-- 6. ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.elections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.candidates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- DROP EXISTING POLICIES
 DROP POLICY IF EXISTS "Allow public read elections" ON public.elections;
 DROP POLICY IF EXISTS "Allow public read candidates" ON public.candidates;
 DROP POLICY IF EXISTS "Allow public insert votes" ON public.votes;
 DROP POLICY IF EXISTS "Allow public read votes" ON public.votes;
-DROP POLICY IF EXISTS "Allow public read audit" ON public.audit_logs;
 
--- CREATE RLS POLICIES
 CREATE POLICY "Allow public read elections" ON public.elections FOR SELECT USING (true);
 CREATE POLICY "Allow public read candidates" ON public.candidates FOR SELECT USING (is_active = true);
 CREATE POLICY "Allow public insert votes" ON public.votes FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public read votes" ON public.votes FOR SELECT USING (true);
 
--- 7. ENABLE REALTIME ON TABLES
+-- 7. ENABLE REALTIME
 DO $$
 BEGIN
   IF NOT EXISTS (

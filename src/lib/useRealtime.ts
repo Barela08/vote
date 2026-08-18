@@ -11,6 +11,7 @@ export function useRealtime() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [totalVotes, setTotalVotes] = useState<number>(0);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [hasVoted, setHasVoted] = useState<boolean>(false);
   const [winnerCandidate, setWinnerCandidate] = useState<Candidate | null>(null);
   const [tieCandidates, setTieCandidates] = useState<Candidate[] | undefined>(undefined);
   const [remainingTime, setRemainingTime] = useState<string>('00:00');
@@ -31,6 +32,7 @@ export function useRealtime() {
         setCandidates(data.candidates || []);
         setTotalVotes(data.totalVotes || 0);
         setIsAdmin(!!data.isAdmin);
+        setHasVoted(!!data.hasVoted);
         setWinnerCandidate(data.winnerCandidate || null);
         setTieCandidates(data.tieCandidates);
 
@@ -128,14 +130,12 @@ export function useRealtime() {
           setIsConnected(true);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           setIsConnected(false);
-          // Reconnect logic: refetch authoritative state immediately
           setTimeout(() => {
             fetchState();
           }, 3000);
         }
       });
 
-    // Window focus / online event handlers for instantaneous reconnection check
     const handleOnline = () => {
       setIsConnected(true);
       fetchState();
@@ -156,6 +156,7 @@ export function useRealtime() {
     candidates,
     totalVotes,
     isAdmin,
+    hasVoted,
     winnerCandidate,
     tieCandidates,
     remainingTime,

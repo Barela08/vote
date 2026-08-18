@@ -36,7 +36,30 @@ function isPlaceholderUrl(): boolean {
   return !url || url.includes('placeholder') || url.includes('your-supabase');
 }
 
-export async function dbGetElectionState() {
+export async function dbHasVoted(electionId: string, voterIdentifier: string): Promise<boolean> {
+  if (!isPlaceholderUrl()) {
+    try {
+      const supabase = getAdminSupabaseClient();
+      const { data } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('election_id', electionId)
+        .eq('voter_identifier', voterIdentifier)
+        .eq('vote_type', 'PUBLIC')
+        .limit(1);
+
+      return !!(data && data.length > 0);
+    } catch (err) {
+      console.warn('Supabase hasVoted check failed, checking local store:', err);
+    }
+  }
+
+  return store.votes.some(
+    (v) => v.election_id === electionId && v.voter_identifier === voterIdentifier && v.vote_type === 'PUBLIC'
+  );
+}
+
+export async function dbGetElectionState(voterIdentifier?: string) {
   if (!isPlaceholderUrl()) {
     try {
       const supabase = getAdminSupabaseClient();
@@ -77,7 +100,14 @@ export async function dbGetElectionState() {
         const candidates: Candidate[] = candidatesData || [];
         const votes: Vote[] = votesData || [];
 
-        return { election, candidates, votes };
+        let hasVoted = false;
+        if (voterIdentifier) {
+          hasVoted = votes.some(
+            (v) => v.voter_identifier === voterIdentifier && v.vote_type === 'PUBLIC'
+          );
+        }
+
+        return { election, candidates, votes, hasVoted };
       }
     } catch (err) {
       console.warn('Supabase fetch failed, using local store fallback:', err);
@@ -92,10 +122,20 @@ export async function dbGetElectionState() {
     }
   }
 
+  const hasVoted = voterIdentifier
+    ? store.votes.some(
+        (v) =>
+          v.election_id === store.election.id &&
+          v.voter_identifier === voterIdentifier &&
+          v.vote_type === 'PUBLIC'
+      )
+    : false;
+
   return {
     election: store.election,
     candidates: store.candidates.filter((c) => c.is_active),
     votes: store.votes,
+    hasVoted,
   };
 }
 
@@ -206,7 +246,6 @@ export async function dbEditCandidate(id: string, name?: string, party?: string,
     }
   }
 
-  // Fallback candidate edit
   const candidateIndex = store.candidates.findIndex((c) => c.id === id);
   if (candidateIndex !== -1) {
     if (name) store.candidates[candidateIndex].name = name.trim();
@@ -254,7 +293,6 @@ export async function dbDeleteCandidate(id: string) {
     }
   }
 
-  // Fallback candidate delete
   const cand = store.candidates.find((c) => c.id === id);
   if (cand) {
     cand.is_active = false;
@@ -322,7 +360,6 @@ export async function dbStartElection(durationSeconds: number) {
     }
   }
 
-  // Fallback election start
   store.election.status = 'ACTIVE';
   store.election.start_at = startAt;
   store.election.end_at = endAt;
@@ -369,7 +406,6 @@ export async function dbEndElection() {
     }
   }
 
-  // Fallback election end
   store.election.status = 'ENDED';
   store.election.updated_at = now;
 
@@ -387,7 +423,7 @@ export async function dbEndElection() {
 }
 
 export async function dbCastPublicVote(candidateId: string, voterIdentifier: string) {
-  const { election, candidates } = await dbGetElectionState();
+  const { election, candidates } = await dbGetElectionState(voterIdentifier);
 
   if (!election || election.status !== 'ACTIVE') {
     throw new Error('Voting is not active');
@@ -395,6 +431,12 @@ export async function dbCastPublicVote(candidateId: string, voterIdentifier: str
 
   if (election.end_at && new Date() >= new Date(election.end_at)) {
     throw new Error('Voting has ended');
+  }
+
+  // Check if voter identifier already voted
+  const alreadyVoted = await dbHasVoted(election.id, voterIdentifier);
+  if (alreadyVoted) {
+    throw new Error('You have already voted in this election.');
   }
 
   const candidate = candidates.find((c) => c.id === candidateId && c.is_active);
@@ -416,13 +458,27 @@ export async function dbCastPublicVote(candidateId: string, voterIdentifier: str
         .select()
         .single();
 
-      if (!error && vote) return vote;
-    } catch (err) {
+      if (error) {
+        if (error.code === '23505' || error.message.includes('unique constraint') || error.message.includes('idx_unique_public_voter')) {
+          throw new Error('You have already voted in this election.');
+        }
+        console.warn('Supabase vote error:', error);
+      } else if (vote) {
+        return vote;
+      }
+    } catch (err: any) {
+      if (err.message?.includes('already voted')) {
+        throw err;
+      }
       console.warn('Supabase vote insert failed, using fallback:', err);
     }
   }
 
-  // Fallback vote cast
+  // Fallback vote cast with duplicate check
+  if (store.votes.some((v) => v.election_id === election.id && v.voter_identifier === voterIdentifier && v.vote_type === 'PUBLIC')) {
+    throw new Error('You have already voted in this election.');
+  }
+
   const newVote: Vote = {
     id: `v_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     election_id: election.id,
@@ -473,7 +529,6 @@ export async function dbAddBulkVotes(candidateId: string, count: number) {
     }
   }
 
-  // Fallback bulk vote
   for (let i = 0; i < count; i++) {
     store.votes.push({
       id: `v_bulk_${Date.now()}_${i}`,
