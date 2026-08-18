@@ -54,6 +54,31 @@ class VoteProApp {
 
     // Global Cloud Database Sync Loop (Every 2 seconds)
     setInterval(() => this.fetchServerState(), 2000);
+
+    // Reconnection & Visibility Wakeup Handlers
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        this.fetchServerState();
+        if (this.status === 'LIVE' && this.endTime) {
+          const remSecs = Math.max(0, Math.ceil((this.endTime - Date.now()) / 1000));
+          this.timeRemaining = remSecs;
+          if (remSecs <= 0) {
+            this.endElection();
+          } else {
+            this.startTimerLoop();
+          }
+        }
+      }
+    });
+
+    window.addEventListener('online', () => {
+      this.fetchServerState();
+      this.setupRealtimeSync();
+    });
+
+    window.addEventListener('focus', () => {
+      this.fetchServerState();
+    });
   }
 
   mergeCandidates(incomingCandidates) {
