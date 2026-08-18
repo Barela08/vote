@@ -1,7 +1,8 @@
-// Vercel Serverless Function API with Supabase Cloud Persistence
+// Vercel Serverless Function API with Supabase Cloud Persistence & ENV variables
 const https = require('https');
 
-const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZXlobW94dnVtYm1nYXR3Z3lwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzA0NzQ2NywiZXhwIjoyMTAyNjIzNDY3fQ.rwcl7cA4E4gnuIZAX7gpWoahSP5VDbrEGiLyagrpCpI";
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://beeyhmoxvumbmgatwgyp.supabase.co";
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 let globalState = {
   candidates: [],
@@ -23,12 +24,13 @@ function sendJSON(res, statusCode, data) {
 function syncToSupabase(state) {
   try {
     const payload = JSON.stringify(state);
-    const req = https.request('https://beeyhmoxvumbmgatwgyp.supabase.co/storage/v1/object/public_box/state.json', {
+    const targetUrl = new URL('/storage/v1/object/public_box/state.json', SUPABASE_URL);
+    const req = https.request(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
         'x-upsert': 'true',
         'Content-Length': Buffer.byteLength(payload)
       }
@@ -41,7 +43,8 @@ function syncToSupabase(state) {
 
 function fetchFromSupabase(callback) {
   try {
-    https.get('https://beeyhmoxvumbmgatwgyp.supabase.co/storage/v1/object/public/public_box/state.json', (res) => {
+    const fetchUrl = new URL('/storage/v1/object/public/public_box/state.json', SUPABASE_URL);
+    https.get(fetchUrl, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
