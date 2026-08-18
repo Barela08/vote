@@ -81,10 +81,21 @@ class VoteProApp {
     fetch('/api/state')
       .then(res => res.json())
       .then(state => {
-        if (state && Array.isArray(state.candidates) && state.candidates.length > 0) {
-          this.mergeCandidates(state.candidates);
-          if (state.status) this.status = state.status;
-          if (state.timeRemaining !== undefined) this.timeRemaining = state.timeRemaining;
+        if (state) {
+          if (Array.isArray(state.candidates) && state.candidates.length > 0) {
+            this.mergeCandidates(state.candidates);
+          }
+          if (state.status) {
+            this.status = state.status;
+            if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
+              clearInterval(this.timerInterval);
+            } else if (this.status === 'LIVE' && !this.timerInterval) {
+              this.startTimerLoop();
+            }
+          }
+          if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
+            this.timeRemaining = state.timeRemaining;
+          }
           if (state.totalDuration !== undefined) this.totalDuration = state.totalDuration;
           this.saveCandidates();
           this.render();
@@ -100,11 +111,22 @@ class VoteProApp {
       try {
         const channel = supabaseClient.channel('election_realtime_channel');
         channel.on('broadcast', { event: 'state_update' }, (payload) => {
-          if (payload && payload.payload && Array.isArray(payload.payload.candidates) && payload.payload.candidates.length > 0) {
+          if (payload && payload.payload) {
             const state = payload.payload;
-            this.mergeCandidates(state.candidates);
-            this.status = state.status;
-            if (state.timeRemaining !== undefined) this.timeRemaining = state.timeRemaining;
+            if (Array.isArray(state.candidates) && state.candidates.length > 0) {
+              this.mergeCandidates(state.candidates);
+            }
+            if (state.status) {
+              this.status = state.status;
+              if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
+                clearInterval(this.timerInterval);
+              } else if (this.status === 'LIVE' && !this.timerInterval) {
+                this.startTimerLoop();
+              }
+            }
+            if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
+              this.timeRemaining = state.timeRemaining;
+            }
             this.saveCandidates();
             this.render();
             this.updateTimerDisplay();
@@ -120,11 +142,22 @@ class VoteProApp {
       source.onmessage = (e) => {
         try {
           const state = JSON.parse(e.data);
-          if (state && Array.isArray(state.candidates) && state.candidates.length > 0) {
-            this.mergeCandidates(state.candidates);
-            this.status = state.status;
-            this.totalDuration = state.totalDuration;
-            this.timeRemaining = state.timeRemaining;
+          if (state) {
+            if (Array.isArray(state.candidates) && state.candidates.length > 0) {
+              this.mergeCandidates(state.candidates);
+            }
+            if (state.status) {
+              this.status = state.status;
+              if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
+                clearInterval(this.timerInterval);
+              } else if (this.status === 'LIVE' && !this.timerInterval) {
+                this.startTimerLoop();
+              }
+            }
+            if (state.totalDuration) this.totalDuration = state.totalDuration;
+            if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
+              this.timeRemaining = state.timeRemaining;
+            }
             this.saveCandidates();
             this.render();
             this.updateTimerDisplay();
