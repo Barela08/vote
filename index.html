@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VotePro - Live Voting & Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+  <div class="app-background">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="main-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-check-to-slot"></i>
+        </div>
+        <div class="brand-text">
+          <h1>Vote<span>Pro</span></h1>
+          <span class="brand-tag">Live Election Portal</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="status-badge" id="electionStatusBadge">
+          <span class="status-dot"></span>
+          <span id="statusText">READY</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="soundToggleBtn" class="icon-btn" title="Toggle Sound FX">
+          <i class="fa-solid fa-volume-high"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Global Timer Bar -->
+    <section class="timer-section" id="timerSection">
+      <div class="timer-card">
+        <div class="timer-info">
+          <span class="timer-label"><i class="fa-solid fa-clock-rotate-left"></i> ELECTION TIMER</span>
+          <span class="timer-subtext" id="timerSubtext">Voting ends automatically when timer hits zero</span>
+        </div>
+        <div class="timer-display-box">
+          <div class="time-digit-container">
+            <span id="timerMinutes">05</span>
+            <span class="unit">MIN</span>
+          </div>
+          <span class="colon">:</span>
+          <div class="time-digit-container">
+            <span id="timerSeconds">00</span>
+            <span class="unit">SEC</span>
+          </div>
+        </div>
+        <div class="timer-progress-wrap">
+          <div class="timer-progress-bar" id="timerProgressBar" style="width: 100%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Dynamic Views -->
+    <main class="main-content">
+
+      <!-- VOTER VIEW -->
+      <section id="voterView" class="view-section active">
+        <div class="section-header">
+          <div>
+            <h2><i class="fa-solid fa-vote-yea"></i> Cast Your Vote</h2>
+            <p>Select your candidate below. Votes are tallied live.</p>
+          </div>
+          <div class="stats-counter">
+            <div class="stat-box">
+              <span class="stat-number" id="totalVotesCount">0</span>
+              <span class="stat-label">Total Votes</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-number" id="totalCandidatesCount">0</span>
+              <span class="stat-label">Candidates</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="candidatesGrid" class="candidates-grid">
+          <!-- Candidate cards dynamically rendered here -->
+        </div>
+
+        <!-- User Voted Banner -->
+        <div id="votedAlertBanner" class="voted-banner hidden">
+          <i class="fa-solid fa-circle-check"></i>
+          <div>
+            <h3>Vote Submitted Successfully!</h3>
+            <p id="votedAlertText">You voted for Candidate. You can monitor live vote counts below.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN DASHBOARD VIEW -->
+      <section id="adminView" class="view-section hidden">
+        <div class="admin-header-bar">
+          <div>
+            <h2><i class="fa-solid fa-screwdriver-wrench"></i> Admin Control Center</h2>
+            <p>Manage candidates, timer, election status & secret vote injection console.</p>
+          </div>
+          <div class="admin-top-actions">
+            <button id="logoutAdminBtn" class="btn btn-danger">
+              <i class="fa-solid fa-right-from-bracket"></i> Logout Admin
+            </button>
+            <button id="startElectionBtn" class="btn btn-success">
+              <i class="fa-solid fa-play"></i> Start Voting
+            </button>
+            <button id="pauseElectionBtn" class="btn btn-warning hidden">
+              <i class="fa-solid fa-pause"></i> Pause
+            </button>
+            <button id="endElectionBtn" class="btn btn-danger">
+              <i class="fa-solid fa-stop"></i> End & Reveal Winner
+            </button>
+            <button id="resetElectionBtn" class="btn btn-outline">
+              <i class="fa-solid fa-rotate"></i> Reset All
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-grid">
+          <!-- Column 1: Config & Add Candidate -->
+          <div class="admin-col">
+            <!-- Timer Config Card -->
+            <div class="glass-card">
+              <h3><i class="fa-solid fa-hourglass-start"></i> Timer Configuration</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="timerInputMinutes">Minutes</label>
+                  <input type="number" id="timerInputMinutes" min="0" max="180" value="5" />
+                </div>
+                <div class="form-group">
+                  <label for="timerInputSeconds">Seconds</label>
+                  <input type="number" id="timerInputSeconds" min="0" max="59" value="0" />
+                </div>
+              </div>
+              <button id="applyTimerBtn" class="btn btn-primary btn-full">
+                <i class="fa-solid fa-clock"></i> Set Timer
+              </button>
+            </div>
+
+            <!-- Add Candidate Card -->
+            <div class="glass-card">
+              <h3><i class="fa-solid fa-user-plus"></i> Add New Candidate</h3>
+              <form id="addCandidateForm">
+                <div class="form-group">
+                  <label for="candName">Candidate Name *</label>
+                  <input type="text" id="candName" placeholder="e.g. Rahul Sharma" required />
+                </div>
+                <div class="form-group">
+                  <label for="candParty">Party / Symbol *</label>
+                  <input type="text" id="candParty" placeholder="e.g. Progress Party 🚀" required />
+                </div>
+                <div class="form-group">
+                  <label for="candAvatar">Avatar / Image URL (Optional)</label>
+                  <input type="url" id="candAvatar" placeholder="https://..." />
+                  <div class="avatar-presets">
+                    <span>Quick Preset Avatars:</span>
+                    <div class="preset-list" id="presetAvatars">
+                      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" data-src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Preset 1" class="preset-img active"/>
+                      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" data-src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" alt="Preset 2" class="preset-img"/>
+                      <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80" data-src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80" alt="Preset 3" class="preset-img"/>
+                      <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" data-src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" alt="Preset 4" class="preset-img"/>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="candBio">Bio / Tagline</label>
+                  <input type="text" id="candBio" placeholder="Short slogan or tagline" />
+                </div>
+                <button type="submit" class="btn btn-success btn-full">
+                  <i class="fa-solid fa-plus"></i> Add Candidate
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Column 2: Candidate Secret Vote Injection Console -->
+          <div class="admin-col col-span-2">
+            <div class="glass-card">
+              <div class="card-title-bar">
+                <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Live Candidate Management & Secret Vote Injector</h3>
+                <span class="badge badge-pulse"><i class="fa-solid fa-bolt"></i> Real-time Backdoor Active</span>
+              </div>
+              <p class="card-subtitle">
+                Inject custom votes (+1, +2, +5, +10, +50, +100...) or directly override vote numbers for any candidate live in the background.
+              </p>
+
+              <div id="adminCandidatesList" class="admin-candidates-list">
+                <!-- Admin candidate injection controls rendered here -->
+              </div>
+            </div>
+
+            <!-- Activity Audit Logs -->
+            <div class="glass-card">
+              <h3><i class="fa-solid fa-list-check"></i> Audit & Vote Activity Log</h3>
+              <div id="auditLogContainer" class="audit-log-container">
+                <div class="log-entry system"><span class="log-time">[System]</span> Voting portal initialized.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ADMIN PIN MODAL -->
+  <div id="adminPinModal" class="modal-backdrop hidden">
+    <div class="modal-box glass-modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-lock"></i> Admin Authentication</h3>
+        <button class="close-modal-btn" id="closePinModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Enter the 4-digit Admin PIN to access management and vote manipulation controls.</p>
+        <div class="pin-input-wrap">
+          <input type="password" id="adminPinInput" maxlength="6" placeholder="Enter PIN (5459)" autofocus />
+        </div>
+        <p id="pinErrorMsg" class="error-msg hidden"><i class="fa-solid fa-triangle-exclamation"></i> Incorrect PIN! Try PIN: 5459</p>
+      </div>
+      <div class="modal-footer">
+        <button id="submitPinBtn" class="btn btn-primary btn-full">Verify & Access</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WINNER / ELECTION COMPLETED MODAL OVERLAY -->
+  <div id="winnerModal" class="winner-modal-overlay hidden">
+    <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+    
+    <div class="winner-modal-card glass-winner-card">
+      <div class="winner-badge-header">
+        <div class="trophy-glow">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <h2>ELECTION FINISHED!</h2>
+        <p class="winner-subtitle">The timer has expired & official results are in!</p>
+      </div>
+
+      <!-- Main Winner Spotlight Card -->
+      <div id="winnerSpotlight" class="winner-spotlight">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Full Standings Table -->
+      <div class="full-standings">
+        <h3><i class="fa-solid fa-chart-simple"></i> Final Candidate Standings</h3>
+        <div id="finalStandingsList" class="final-standings-list">
+          <!-- Final rankings rendered here -->
+        </div>
+      </div>
+
+      <div class="winner-modal-actions">
+        <button id="closeWinnerModalBtn" class="btn btn-outline">
+          <i class="fa-solid fa-eye"></i> View Dashboard
+        </button>
+        <button id="restartNewElectionBtn" class="btn btn-success">
+          <i class="fa-solid fa-rotate-right"></i> Start New Election
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
