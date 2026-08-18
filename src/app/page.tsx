@@ -33,6 +33,7 @@ export default function PublicVotingPage() {
     refetch,
   } = useRealtime();
 
+  // Temporary frontend interaction states
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [voteSuccessMessage, setVoteSuccessMessage] = useState<string | null>(null);
@@ -65,13 +66,22 @@ export default function PublicVotingPage() {
 
       if (res.ok && data.success) {
         soundEngine.playVoteClick();
-        setVoteSuccessMessage(`✓ VOTE RECORDED! Thank you for voting for ${selectedCandidate.name}`);
+
+        // 1. Show short confirmation
+        setVoteSuccessMessage('✓ Vote Recorded Successfully');
+
+        // 2. Clear all temporary frontend states (selected candidate, modal, highlights)
         setSelectedCandidate(null);
-        refetch();
+        setErrorMessage(null);
+
+        // 3. Trigger authoritative sync to fetch updated total votes & persist hasVoted state
+        await refetch();
+
+        // 4. Auto-clear confirmation toast after 4 seconds
+        setTimeout(() => setVoteSuccessMessage(null), 4000);
       } else {
+        // If vote fails, do NOT reset page UI. Show error and allow retry if eligible.
         setErrorMessage(data.message || 'You have already voted in this election.');
-        setSelectedCandidate(null);
-        refetch();
       }
     } catch (err) {
       setErrorMessage('Network error while submitting vote.');
@@ -109,7 +119,7 @@ export default function PublicVotingPage() {
         </div>
       )}
 
-      {/* Toast Notification */}
+      {/* Confirmation Toast */}
       {voteSuccessMessage && (
         <div className="fixed top-20 right-4 z-50 max-w-md bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-3 animate-bounce">
           <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0" />
