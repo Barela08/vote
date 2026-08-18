@@ -110,6 +110,31 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'POST' && reqUrl === '/api/admin/official-votes') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { candId, amount } = JSON.parse(body);
+        const cand = electionState.candidates.find(c => c.id === candId);
+        if (cand && amount > 0) {
+          cand.votes += amount;
+          electionState.lastUpdated = Date.now();
+          broadcastState();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, candidates: electionState.candidates }));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Candidate not found or invalid vote count' }));
+        }
+      } catch (e) {
+        res.writeHead(400);
+        res.end('Invalid payload');
+      }
+    });
+    return;
+  }
+
   if (req.method === 'POST' && reqUrl === '/api/admin/update') {
     let body = '';
     req.on('data', chunk => body += chunk);

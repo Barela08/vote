@@ -571,6 +571,38 @@ class VoteProApp {
     // Timer Config
     document.getElementById('applyTimerBtn').addEventListener('click', () => this.applyTimerConfig());
 
+    // Vote Confirmation Modal Controls
+    const closeConfirmBtn = document.getElementById('closeVoteConfirmBtn');
+    if (closeConfirmBtn) {
+      closeConfirmBtn.addEventListener('click', () => {
+        document.getElementById('voteConfirmModal').classList.add('hidden');
+        this.pendingVoteCandId = null;
+      });
+    }
+
+    const cancelVoteBtn = document.getElementById('cancelVoteBtn');
+    if (cancelVoteBtn) {
+      cancelVoteBtn.addEventListener('click', () => {
+        document.getElementById('voteConfirmModal').classList.add('hidden');
+        this.pendingVoteCandId = null;
+      });
+    }
+
+    const confirmVoteBtn = document.getElementById('confirmVoteBtn');
+    if (confirmVoteBtn) {
+      confirmVoteBtn.addEventListener('click', () => {
+        this.confirmAndCastVote();
+      });
+    }
+
+    // Official Live Vote Management
+    const addOfficialVotesBtn = document.getElementById('addOfficialVotesBtn');
+    if (addOfficialVotesBtn) {
+      addOfficialVotesBtn.addEventListener('click', () => {
+        this.addOfficialVotes();
+      });
+    }
+
     // Winner Modal close & reset
     document.getElementById('closeWinnerModalBtn').addEventListener('click', () => {
       document.getElementById('winnerModal').classList.add('hidden');
@@ -768,8 +800,36 @@ class VoteProApp {
   }
 
   /* ==========================================
-     VOTING & SECRET ADMIN BOOST ENGINE
+     VOTING & CONFIRMATION ENGINE
      ========================================== */
+  openVoteConfirmModal(cand) {
+    if (this.status !== 'LIVE') {
+      alert('Voting is currently not live. Please wait for the admin to start the election.');
+      return;
+    }
+
+    const deviceVoted = localStorage.getItem('votepro_voted_device');
+    if (this.userVotedCandidateId || deviceVoted === 'true') {
+      alert('⚠️ Iss device / browser se pehle hi vote diya ja chuka hai! Ek device se sirf 1 vote allow hai.');
+      return;
+    }
+
+    this.pendingVoteCandId = cand.id;
+    document.getElementById('confirmCandAvatar').src = cand.avatar;
+    document.getElementById('confirmCandName').textContent = cand.name;
+    document.getElementById('confirmCandParty').textContent = cand.party;
+    document.getElementById('voteConfirmModal').classList.remove('hidden');
+  }
+
+  confirmAndCastVote() {
+    if (!this.pendingVoteCandId) return;
+    const candId = this.pendingVoteCandId;
+    this.pendingVoteCandId = null;
+    document.getElementById('voteConfirmModal').classList.add('hidden');
+
+    this.castUserVote(candId);
+  }
+
   castUserVote(candId) {
     if (this.status !== 'LIVE') {
       alert('Voting is currently not live. Please wait for the admin to start the election.');
@@ -800,6 +860,40 @@ class VoteProApp {
     this.playSound('vote');
     this.render();
     this.logAudit('Voter', `Standard vote recorded for ${cand.name}`);
+  }
+
+  addOfficialVotes() {
+    if (!this.isAdminMode) {
+      alert('Unauthorized! Admin privileges required.');
+      return;
+    }
+
+    const selectEl = document.getElementById('officialVoteCandSelect');
+    const inputEl = document.getElementById('officialVoteCountInput');
+    if (!selectEl || !inputEl) return;
+
+    const candId = selectEl.value;
+    const votesToAdd = parseInt(inputEl.value, 10);
+    if (!candId || isNaN(votesToAdd) || votesToAdd <= 0) {
+      alert('Please select a candidate and enter a valid positive vote count.');
+      return;
+    }
+
+    const cand = this.candidates.find(c => c.id === candId);
+    if (!cand) return;
+
+    cand.votes += votesToAdd;
+    this.saveState();
+
+    fetch('/api/admin/official-votes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candId, amount: votesToAdd, adminId: 'Admin' })
+    }).catch(() => {});
+
+    this.render();
+    this.logAudit('Admin', `Recorded +${votesToAdd} official votes for ${cand.name} (New Total: ${cand.votes})`);
+    alert(`Successfully recorded +${votesToAdd} official votes for ${cand.name}!`);
   }
 
   /* ==========================================
@@ -925,13 +1019,7 @@ class VoteProApp {
       return;
     }
 
-    // Sort candidates by votes to assign rank badges
-    const sorted = [...this.candidates].sort((a, b) => b.votes - a.votes);
-
     this.candidates.forEach((cand) => {
-      const rank = sorted.findIndex((c) => c.id === cand.id) + 1;
-      const percent = totalVotes > 0 ? ((cand.votes / totalVotes) * 100).toFixed(1) : '0.0';
-
       const isVotedThis = this.userVotedCandidateId === cand.id;
       const isDisabled = this.status !== 'LIVE' || !!this.userVotedCandidateId;
 
@@ -941,22 +1029,11 @@ class VoteProApp {
         <div class="candidate-header">
           <div class="cand-avatar-wrap">
             <img src="${cand.avatar}" alt="${cand.name}" class="cand-avatar" onerror="this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'" />
-            <span class="cand-rank-tag">#${rank}</span>
           </div>
           <div class="cand-details">
             <h3 class="cand-name">${cand.name}</h3>
             <div class="cand-party">${cand.party}</div>
             <div class="cand-bio">${cand.bio}</div>
-          </div>
-        </div>
-
-        <div class="cand-vote-stats">
-          <div class="vote-meta">
-            <span class="vote-count-text"><i class="fa-solid fa-check"></i> ${cand.votes.toLocaleString()} Votes</span>
-            <span class="vote-percent-text">${percent}%</span>
-          </div>
-          <div class="vote-bar-track">
-            <div class="vote-bar-fill" style="width: ${percent}%;"></div>
           </div>
         </div>
 
@@ -967,7 +1044,7 @@ class VoteProApp {
       `;
 
       card.querySelector('.vote-btn').addEventListener('click', () => {
-        this.castUserVote(cand.id);
+        this.openVoteConfirmModal(cand);
       });
 
       grid.appendChild(card);
@@ -994,6 +1071,22 @@ class VoteProApp {
     } else {
       startBtn.classList.remove('hidden');
       pauseBtn.classList.add('hidden');
+    }
+
+    // Populate Official Live Vote Management dropdown
+    const selectEl = document.getElementById('officialVoteCandSelect');
+    if (selectEl) {
+      selectEl.innerHTML = '';
+      if (this.candidates.length === 0) {
+        selectEl.innerHTML = '<option value="">No candidates available</option>';
+      } else {
+        this.candidates.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = `${c.name} (${c.party}) - Current: ${c.votes} Votes`;
+          selectEl.appendChild(opt);
+        });
+      }
     }
 
     list.innerHTML = '';
@@ -1041,31 +1134,44 @@ class VoteProApp {
 
     if (this.candidates.length === 0) return;
 
-    // Play victory sound
     this.playSound('fanfare');
 
-    // Sort candidates descending by votes
     const sorted = [...this.candidates].sort((a, b) => b.votes - a.votes);
     const winner = sorted[0];
-
     const totalVotes = this.candidates.reduce((sum, c) => sum + c.votes, 0);
-    const winnerPercent = totalVotes > 0 ? ((winner.votes / totalVotes) * 100).toFixed(1) : '0.0';
 
-    // Render Winner Spotlight Card
-    spotlight.innerHTML = `
-      <div class="winner-spotlight-card">
-        <img src="${winner.avatar}" alt="${winner.name}" class="winner-spotlight-avatar" onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80'" />
-        <div class="winner-spotlight-info">
-          <h3>👑 ${winner.name}</h3>
-          <p>${winner.party}</p>
-          <div class="winner-vote-pill">
-            🏆 WINNER WITH ${winner.votes.toLocaleString()} VOTES (${winnerPercent}%)
+    const isTie = sorted.length > 1 && sorted[0].votes === sorted[1].votes && sorted[0].votes > 0;
+
+    if (isTie) {
+      const topTied = sorted.filter(c => c.votes === sorted[0].votes);
+      const names = topTied.map(c => c.name).join(' & ');
+      spotlight.innerHTML = `
+        <div class="winner-spotlight-card" style="border: 2px dashed #f59e0b;">
+          <div class="winner-spotlight-info" style="text-align: center; width: 100%;">
+            <h3 style="color: #f59e0b;">⚖️ TIE DETECTED</h3>
+            <p style="color: #fff; margin-top: 5px;">Equal highest vote count between: <strong>${names}</strong></p>
+            <div class="winner-vote-pill" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; margin-top: 10px;">
+              EACH WITH ${sorted[0].votes.toLocaleString()} VOTES
+            </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
+    } else {
+      const winnerPercent = totalVotes > 0 ? ((winner.votes / totalVotes) * 100).toFixed(1) : '0.0';
+      spotlight.innerHTML = `
+        <div class="winner-spotlight-card">
+          <img src="${winner.avatar}" alt="${winner.name}" class="winner-spotlight-avatar" onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80'" />
+          <div class="winner-spotlight-info">
+            <h3>👑 ${winner.name}</h3>
+            <p>${winner.party}</p>
+            <div class="winner-vote-pill">
+              🏆 WINNER WITH ${winner.votes.toLocaleString()} VOTES (${winnerPercent}%)
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
-    // Render Standings
     standingsList.innerHTML = '';
     sorted.forEach((cand, idx) => {
       const row = document.createElement('div');
@@ -1073,7 +1179,7 @@ class VoteProApp {
       const pct = totalVotes > 0 ? ((cand.votes / totalVotes) * 100).toFixed(1) : '0';
       row.innerHTML = `
         <span class="standing-rank">#${idx + 1}</span>
-        <span class="standing-name">${idx === 0 ? '👑 ' : ''}${cand.name} (${cand.party})</span>
+        <span class="standing-name">${idx === 0 && !isTie ? '👑 ' : ''}${cand.name} (${cand.party})</span>
         <span class="standing-votes">${cand.votes.toLocaleString()} Votes (${pct}%)</span>
       `;
       standingsList.appendChild(row);

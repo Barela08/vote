@@ -221,8 +221,31 @@
               </div>
             </div>
 
+            <!-- Official Live Vote Management Card -->
+            <div class="glass-card" style="margin-top: 24px;">
+              <div class="card-title-bar">
+                <h3><i class="fa-solid fa-hand-holding-hand"></i> Live Official Vote Management</h3>
+                <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);"><i class="fa-solid fa-shield"></i> Audited Admin Feature</span>
+              </div>
+              <p class="card-subtitle">Record official manual vote entries for live candidates. Every transaction is authenticated and recorded in the audit log.</p>
+              
+              <div class="form-row" style="margin-top: 15px; display: flex; gap: 12px; align-items: flex-end;">
+                <div class="form-group" style="flex: 2;">
+                  <label for="officialVoteCandSelect">Select Candidate</label>
+                  <select id="officialVoteCandSelect" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);"></select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label for="officialVoteCountInput">Official Votes</label>
+                  <input type="number" id="officialVoteCountInput" min="1" value="1" placeholder="e.g. 5" />
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <button id="addOfficialVotesBtn" class="btn btn-primary btn-full"><i class="fa-solid fa-plus"></i> Add Votes</button>
+                </div>
+              </div>
+            </div>
+
             <!-- Activity Audit Logs -->
-            <div class="glass-card">
+            <div class="glass-card" style="margin-top: 24px;">
               <h3><i class="fa-solid fa-list-check"></i> Audit & Vote Activity Log</h3>
               <div id="auditLogContainer" class="audit-log-container">
                 <div class="log-entry system"><span class="log-time">[System]</span> Voting portal initialized.</div>
@@ -233,6 +256,28 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- VOTE CONFIRMATION MODAL -->
+  <div id="voteConfirmModal" class="modal-backdrop hidden">
+    <div class="modal-box glass-modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-check-to-slot"></i> Confirm Your Vote</h3>
+        <button class="close-modal-btn" id="closeVoteConfirmBtn">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div id="confirmCandAvatarWrap" style="margin-bottom: 15px;">
+          <img id="confirmCandAvatar" src="" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary);" />
+        </div>
+        <h4 id="confirmCandName" style="font-size: 1.3rem; color: #fff; margin-bottom: 5px;">Candidate Name</h4>
+        <p id="confirmCandParty" style="color: var(--primary); font-weight: 600; margin-bottom: 15px;">Party Name</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Are you sure you want to cast your official vote for this candidate?</p>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 10px;">
+        <button id="cancelVoteBtn" class="btn btn-outline" style="flex: 1;">Cancel</button>
+        <button id="confirmVoteBtn" class="btn btn-success" style="flex: 1;"><i class="fa-solid fa-check"></i> Confirm Vote</button>
+      </div>
+    </div>
   </div>
 
   <!-- ADMIN PIN MODAL -->
