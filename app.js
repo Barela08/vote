@@ -117,7 +117,13 @@ class VoteProApp {
     if (savedCandidates) {
       try {
         const parsed = JSON.parse(savedCandidates);
-        if (Array.isArray(parsed)) {
+        // If old sample candidates exist, clear them permanently
+        if (Array.isArray(parsed) && parsed.some(c => c.id === 'cand_1' || c.id === 'cand_2' || c.id === 'cand_3')) {
+          this.candidates = [];
+          localStorage.setItem('votepro_candidates', JSON.stringify([]));
+          localStorage.removeItem('votepro_user_voted');
+          localStorage.removeItem('votepro_voted_device');
+        } else if (Array.isArray(parsed)) {
           this.candidates = parsed;
         } else {
           this.candidates = [];
