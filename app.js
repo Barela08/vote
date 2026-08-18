@@ -32,6 +32,17 @@ const DEFAULT_CANDIDATES = [
   }
 ];
 
+// Supabase Cloud Credentials
+const SUPABASE_URL = "https://beeyhmoxvumbmgatwgyp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZXlobW94dnVtYm1nYXR3Z3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDc0NjcsImV4cCI6MjEwMjYyMzQ2N30.7clcOJ6v-L6PnhS6L_J2cysKfsLz6xrnaQ2Zh-rsiXo";
+
+let supabaseClient = null;
+if (window.supabase && window.supabase.createClient) {
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {}
+}
+
 class VoteProApp {
   constructor() {
     this.candidates = [];
@@ -43,6 +54,7 @@ class VoteProApp {
     this.isAdminMode = false;
     this.soundEnabled = true;
     this.adminPin = '5459';
+    this.supabaseChannel = null;
 
     // Audio Context
     this.audioCtx = null;
@@ -64,6 +76,25 @@ class VoteProApp {
   }
 
   setupRealtimeSync() {
+    // 1. Supabase Cloud Realtime Channel Broadcast
+    if (supabaseClient) {
+      try {
+        const channel = supabaseClient.channel('election_realtime_channel');
+        channel.on('broadcast', { event: 'state_update' }, (payload) => {
+          if (payload && payload.payload && payload.payload.candidates) {
+            const state = payload.payload;
+            this.candidates = state.candidates;
+            this.status = state.status;
+            if (state.timeRemaining !== undefined) this.timeRemaining = state.timeRemaining;
+            this.render();
+            this.updateTimerDisplay();
+          }
+        }).subscribe();
+        this.supabaseChannel = channel;
+      } catch (e) {}
+    }
+
+    // 2. Server Event Stream Fallback
     if (!!window.EventSource) {
       const source = new EventSource('/api/stream');
       source.onmessage = (e) => {
@@ -83,6 +114,23 @@ class VoteProApp {
           }
         } catch (err) {}
       };
+    }
+  }
+
+  broadcastSupabaseState() {
+    if (this.supabaseChannel) {
+      try {
+        this.supabaseChannel.send({
+          type: 'broadcast',
+          event: 'state_update',
+          payload: {
+            candidates: this.candidates,
+            status: this.status,
+            timeRemaining: this.timeRemaining,
+            totalDuration: this.totalDuration
+          }
+        }).catch(() => {});
+      } catch (e) {}
     }
   }
 
@@ -148,6 +196,7 @@ class VoteProApp {
     } else {
       localStorage.removeItem('votepro_user_voted');
     }
+    this.broadcastSupabaseState();
   }
 
   /* ==========================================
