@@ -22,31 +22,39 @@ export async function POST(request: Request) {
     const fileName = `candidate_${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const supabase = getAdminSupabaseClient();
-
-    // Upload to candidate-photos bucket
-    const { data: uploadData, error: uploadErr } = await supabase.storage
-      .from('candidate-photos')
-      .upload(filePath, buffer, {
-        contentType: file.type,
-        upsert: true,
-      });
-
-    if (uploadErr) {
-      console.warn('Supabase storage upload failed, converting to data URL fallback:', uploadErr);
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    if (!url || url.includes('placeholder') || url.includes('your-supabase')) {
       const base64 = buffer.toString('base64');
-      const dataUrl = `data:${file.type};base64,${base64}`;
+      const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
       return NextResponse.json({ success: true, photo_url: dataUrl });
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from('candidate-photos')
-      .getPublicUrl(uploadData.path);
+    try {
+      const supabase = getAdminSupabaseClient();
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from('candidate-photos')
+        .upload(filePath, buffer, {
+          contentType: file.type,
+          upsert: true,
+        });
 
-    return NextResponse.json({
-      success: true,
-      photo_url: publicUrlData.publicUrl,
-    });
+      if (!uploadErr && uploadData) {
+        const { data: publicUrlData } = supabase.storage
+          .from('candidate-photos')
+          .getPublicUrl(uploadData.path);
+
+        return NextResponse.json({
+          success: true,
+          photo_url: publicUrlData.publicUrl,
+        });
+      }
+    } catch (storageErr) {
+      console.warn('Supabase storage connection error, using base64 fallback:', storageErr);
+    }
+
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
+    return NextResponse.json({ success: true, photo_url: dataUrl });
   } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

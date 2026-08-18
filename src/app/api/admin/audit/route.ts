@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAdminAuthenticated } from '@/lib/auth';
-import { getAdminSupabaseClient } from '@/lib/supabase/server';
+import { dbGetAuditLogs } from '@/lib/db';
 
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
@@ -8,18 +8,8 @@ export async function GET() {
   }
 
   try {
-    const supabase = getAdminSupabaseClient();
-    const { data: auditLogs, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, auditLogs: auditLogs || [] });
+    const auditLogs = await dbGetAuditLogs();
+    return NextResponse.json({ success: true, auditLogs });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

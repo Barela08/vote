@@ -1,75 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getAdminSupabaseClient } from '@/lib/supabase/server';
+import { dbGetElectionState } from '@/lib/db';
 import { isAdminAuthenticated } from '@/lib/auth';
-import { Candidate, Election } from '@/lib/types';
+import { Candidate } from '@/lib/types';
 
 export async function GET() {
   try {
     const isAdmin = await isAdminAuthenticated();
-    const supabase = getAdminSupabaseClient();
+    const { election, candidates: rawCandidates, votes } = await dbGetElectionState();
 
-    // Fetch latest active or most recent election
-    const { data: elections, error: electionErr } = await supabase
-      .from('elections')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (electionErr) {
-      console.error('Error fetching election:', electionErr);
-    }
-
-    let election: Election | null = elections && elections.length > 0 ? elections[0] : null;
-
-    // Check if active election has expired according to server timestamp
-    if (election && election.status === 'ACTIVE' && election.end_at) {
-      const now = new Date();
-      const endAt = new Date(election.end_at);
-      if (now >= endAt) {
-        // Update election status to ENDED
-        election.status = 'ENDED';
-        await supabase
-          .from('elections')
-          .update({ status: 'ENDED', updated_at: now.toISOString() })
-          .eq('id', election.id);
-      }
-    }
-
-    if (!election) {
-      return NextResponse.json({
-        election: null,
-        candidates: [],
-        totalVotes: 0,
-        isAdmin,
-      });
-    }
-
-    // Fetch candidates
-    const { data: candidatesData, error: candidateErr } = await supabase
-      .from('candidates')
-      .select('*')
-      .eq('election_id', election.id)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: true });
-
-    if (candidateErr) {
-      console.error('Error fetching candidates:', candidateErr);
-    }
-
-    const rawCandidates: Candidate[] = candidatesData || [];
-
-    // Fetch votes for this election
-    const { data: votesData, error: votesErr } = await supabase
-      .from('votes')
-      .select('candidate_id')
-      .eq('election_id', election.id);
-
-    if (votesErr) {
-      console.error('Error fetching votes:', votesErr);
-    }
-
-    const votes = votesData || [];
     const totalVotes = votes.length;
 
     // Count votes per candidate
@@ -83,13 +21,13 @@ export async function GET() {
       }
     });
 
-    // Map candidate list
+    // Map candidates list (only include vote_count for admin)
     const candidates = rawCandidates.map((c) => ({
       ...c,
       vote_count: isAdmin ? voteCounts[c.id] || 0 : undefined,
     }));
 
-    // If election is ENDED, determine winner or tie
+    // If election is ENDED, calculate winner or tie
     let tieCandidates: Candidate[] | undefined = undefined;
     let winnerCandidate: Candidate | null = null;
 
@@ -110,14 +48,7 @@ export async function GET() {
 
       if (topCandidates.length === 1) {
         winnerCandidate = topCandidates[0];
-        if (election.winner_id !== winnerCandidate.id) {
-          // Store winner in database
-          await supabase
-            .from('elections')
-            .update({ winner_id: winnerCandidate.id, updated_at: new Date().toISOString() })
-            .eq('id', election.id);
-          election.winner_id = winnerCandidate.id;
-        }
+        election.winner_id = winnerCandidate.id;
       } else if (topCandidates.length > 1) {
         tieCandidates = topCandidates;
       }
