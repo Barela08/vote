@@ -60,28 +60,24 @@ class VoteProApp {
     if (!Array.isArray(incomingCandidates)) return;
 
     // Filter out deleted candidate IDs
-    incomingCandidates = incomingCandidates.filter(c => !this.deletedCandidateIds.has(c.id));
+    const validIncoming = incomingCandidates.filter(c => !this.deletedCandidateIds.has(c.id));
 
-    const candMap = new Map();
-    // 1. Keep existing local candidates (excluding deleted)
-    this.candidates
-      .filter(c => !this.deletedCandidateIds.has(c.id))
-      .forEach(c => candMap.set(c.id, c));
+    if (validIncoming.length > 0) {
+      const localMap = new Map();
+      this.candidates.forEach(c => localMap.set(c.id, c));
 
-    // 2. Add or update incoming candidates
-    incomingCandidates.forEach(sc => {
-      if (candMap.has(sc.id)) {
-        const local = candMap.get(sc.id);
-        local.votes = Math.max(local.votes || 0, sc.votes || 0);
-        if (sc.name) local.name = sc.name;
-        if (sc.party) local.party = sc.party;
-        if (sc.avatar) local.avatar = sc.avatar;
-      } else {
-        candMap.set(sc.id, sc);
-      }
-    });
+      validIncoming.forEach(sc => {
+        if (localMap.has(sc.id)) {
+          const local = localMap.get(sc.id);
+          local.votes = Math.max(local.votes || 0, sc.votes || 0);
+          if (sc.name) local.name = sc.name;
+          if (sc.party) local.party = sc.party;
+          if (sc.avatar) local.avatar = sc.avatar;
+        }
+      });
 
-    this.candidates = Array.from(candMap.values());
+      this.candidates = validIncoming;
+    }
   }
 
   applyServerState(state) {

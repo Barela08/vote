@@ -114,10 +114,12 @@ module.exports = (req, res) => {
     if (body && (body.candidates || body.status || body.deleteCandId)) {
       if (body.deleteCandId) {
         globalState.candidates = globalState.candidates.filter(c => c.id !== body.deleteCandId);
-      } else if (body.candidates) {
-        mergeServerCandidates(body.candidates);
+      } else if (Array.isArray(body.candidates)) {
+        globalState.candidates = body.candidates;
       }
-      if (body.status) globalState.status = body.status;
+      if (body.status) {
+        globalState.status = body.status;
+      }
       if (body.totalDuration !== undefined) globalState.totalDuration = body.totalDuration;
       if (body.timeRemaining !== undefined) globalState.timeRemaining = body.timeRemaining;
       globalState.lastUpdated = Date.now();
