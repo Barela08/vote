@@ -490,7 +490,7 @@ class VoteProApp {
     document.getElementById('restartNewElectionBtn').addEventListener('click', () => {
       document.getElementById('winnerModal').classList.add('hidden');
       this.stopConfetti();
-      this.resetElection();
+      this.resetElection(true);
     });
   }
 
@@ -632,9 +632,11 @@ class VoteProApp {
     this.showWinnerModal();
   }
 
-  resetElection() {
-    if (confirm('Are you sure you want to reset all vote counts and restart the election?')) {
+  resetElection(skipConfirm = false) {
+    if (skipConfirm || confirm('Reset all vote counts to 0 and prepare for new election? (Candidate list and photos will be preserved!)')) {
       clearInterval(this.timerInterval);
+      this.timerInterval = null;
+      // Preserve candidate list and photos, only zero out vote counts!
       this.candidates.forEach((c) => (c.votes = 0));
       this.status = 'READY';
       this.timeRemaining = this.totalDuration;
@@ -644,7 +646,7 @@ class VoteProApp {
       this.saveState();
       this.render();
       this.updateTimerDisplay();
-      this.logAudit('System', 'Election reset complete. All device vote locks cleared.');
+      this.logAudit('System', 'Election reset complete. All vote counts reset to 0. Candidates preserved!');
     }
   }
 
