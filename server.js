@@ -115,20 +115,7 @@ const server = http.createServer((req, res) => {
         if (payload.deleteCandId) {
           electionState.candidates = electionState.candidates.filter(c => c.id !== payload.deleteCandId);
         } else if (Array.isArray(payload.candidates)) {
-          const map = new Map();
-          electionState.candidates.forEach(c => map.set(c.id, c));
-          payload.candidates.forEach(sc => {
-            if (map.has(sc.id)) {
-              const existing = map.get(sc.id);
-              existing.votes = Math.max(existing.votes || 0, sc.votes || 0);
-              if (sc.name) existing.name = sc.name;
-              if (sc.party) existing.party = sc.party;
-              if (sc.avatar) existing.avatar = sc.avatar;
-            } else {
-              map.set(sc.id, sc);
-            }
-          });
-          electionState.candidates = Array.from(map.values());
+          electionState.candidates = payload.candidates;
         }
         if (payload.status) electionState.status = payload.status;
         if (payload.totalDuration !== undefined) electionState.totalDuration = payload.totalDuration;
