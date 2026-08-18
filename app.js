@@ -219,9 +219,8 @@ class VoteProApp {
     const savedUserVoted = localStorage.getItem('votepro_user_voted');
     if (savedUserVoted) this.userVotedCandidateId = savedUserVoted;
 
-    // Auto-start live timer if candidates exist and election is not ended
-    if (this.candidates.length > 0 && this.status !== 'ENDED') {
-      this.status = 'LIVE';
+    // Start timer loop ONLY if Admin has explicitly set election status to LIVE
+    if (this.status === 'LIVE') {
       if (this.timeRemaining <= 0) {
         this.timeRemaining = this.totalDuration > 0 ? this.totalDuration : 300;
       }
