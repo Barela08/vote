@@ -1,32 +1,11 @@
-// Vercel Serverless Function API
+// Vercel Serverless Function API (Clean Database)
 let electionState = {
-  candidates: [
-    {
-      id: 'cand_1',
-      name: 'Narendra Modi',
-      party: 'Bharatiya Janata Party (BJP) 🥭',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
-      bio: 'Development & Economic Reform Agenda',
-      votes: 12
-    },
-    {
-      id: 'cand_2',
-      name: 'Rahul Gandhi',
-      party: 'Indian National Congress (INC) ✋',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
-      bio: 'Nyay Agenda & Democratic Reform',
-      votes: 8
-    },
-    {
-      id: 'cand_3',
-      name: 'Arvind Kejriwal',
-      party: 'Aam Aadmi Party (AAP) 🧹',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
-      bio: 'Education, Healthcare & Urban Governance',
-      votes: 5
-    }
-  ],
-  status: 'LIVE',
+  candidates: [],
+  status: 'READY',
+  totalDuration: 300,
+  timeRemaining: 300,
+  lastUpdated: Date.now()
+};
   totalDuration: 300,
   timeRemaining: 300,
   lastUpdated: Date.now()

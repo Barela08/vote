@@ -4,33 +4,8 @@
  * Web Audio FX, and Celebratory Winner Announcement.
  */
 
-// Initial Default State
-const DEFAULT_CANDIDATES = [
-  {
-    id: 'cand_1',
-    name: 'Narendra Modi',
-    party: 'Bharatiya Janata Party (BJP) 🥭',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
-    bio: 'Development & Economic Reform Agenda',
-    votes: 12
-  },
-  {
-    id: 'cand_2',
-    name: 'Rahul Gandhi',
-    party: 'Indian National Congress (INC) ✋',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
-    bio: 'Nyay Agenda & Democratic Reform',
-    votes: 8
-  },
-  {
-    id: 'cand_3',
-    name: 'Arvind Kejriwal',
-    party: 'Aam Aadmi Party (AAP) 🧹',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
-    bio: 'Education, Healthcare & Urban Governance',
-    votes: 5
-  }
-];
+// Initial Default State (Clean DB with zero dummy candidates)
+const DEFAULT_CANDIDATES = [];
 
 // Supabase Cloud Credentials
 const SUPABASE_URL = "https://beeyhmoxvumbmgatwgyp.supabase.co";
@@ -142,19 +117,16 @@ class VoteProApp {
     if (savedCandidates) {
       try {
         const parsed = JSON.parse(savedCandidates);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           this.candidates = parsed;
         } else {
-          this.candidates = JSON.parse(JSON.stringify(DEFAULT_CANDIDATES));
-          this.saveCandidates();
+          this.candidates = [];
         }
       } catch (e) {
-        this.candidates = JSON.parse(JSON.stringify(DEFAULT_CANDIDATES));
-        this.saveCandidates();
+        this.candidates = [];
       }
     } else {
-      this.candidates = JSON.parse(JSON.stringify(DEFAULT_CANDIDATES));
-      this.saveCandidates();
+      this.candidates = [];
     }
 
     const savedStatus = localStorage.getItem('votepro_status');

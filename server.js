@@ -5,35 +5,14 @@ const path = require('path');
 const PORT = 8080;
 const SUPABASE_DB_URL = process.env.DATABASE_URL || 'postgresql://postgres:[YOUR-PASSWORD]@db.beeyhmoxvumbmgatwgyp.supabase.co:5432/postgres';
 
-// Default State
+// Default State (Clean DB with zero dummy candidates)
 let electionState = {
-  candidates: [
-    {
-      id: 'cand_1',
-      name: 'Narendra Modi',
-      party: 'Bharatiya Janata Party (BJP) 🥭',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
-      bio: 'Development & Economic Reform Agenda',
-      votes: 12
-    },
-    {
-      id: 'cand_2',
-      name: 'Rahul Gandhi',
-      party: 'Indian National Congress (INC) ✋',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
-      bio: 'Nyay Agenda & Democratic Reform',
-      votes: 8
-    },
-    {
-      id: 'cand_3',
-      name: 'Arvind Kejriwal',
-      party: 'Aam Aadmi Party (AAP) 🧹',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
-      bio: 'Education, Healthcare & Urban Governance',
-      votes: 5
-    }
-  ],
-  status: 'LIVE', // 'READY', 'LIVE', 'PAUSED', 'ENDED'
+  candidates: [],
+  status: 'READY',
+  totalDuration: 300,
+  timeRemaining: 300,
+  lastUpdated: Date.now()
+}; // 'READY', 'LIVE', 'PAUSED', 'ENDED'
   totalDuration: 300,
   timeRemaining: 300,
   lastUpdated: Date.now()
