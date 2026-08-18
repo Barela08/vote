@@ -12,10 +12,6 @@ let electionState = {
   totalDuration: 300,
   timeRemaining: 300,
   lastUpdated: Date.now()
-}; // 'READY', 'LIVE', 'PAUSED', 'ENDED'
-  totalDuration: 300,
-  timeRemaining: 300,
-  lastUpdated: Date.now()
 };
 
 // SSE Active Clients
