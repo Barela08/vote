@@ -322,6 +322,13 @@ class VoteProApp {
     window.addEventListener('hashchange', () => this.checkRoute());
     window.addEventListener('popstate', () => this.checkRoute());
 
+    // Storage change listener to sync across tabs instantly
+    window.addEventListener('storage', (e) => {
+      this.loadStateFromStorage();
+      this.render();
+      this.updateTimerDisplay();
+    });
+
     // Hidden Keyboard Shortcut: Ctrl + Shift + A to trigger Admin login
     window.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
