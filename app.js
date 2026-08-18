@@ -747,42 +747,6 @@ class VoteProApp {
     this.logAudit('Voter', `Standard vote recorded for ${cand.name}`);
   }
 
-  /**
-   * Secret Admin Injection / Backdoor Vote Boosting
-   */
-  injectVotes(candId, boostCount) {
-    const cand = this.candidates.find((c) => c.id === candId);
-    if (!cand) return;
-
-    cand.votes += boostCount;
-    this.saveState();
-
-    // Broadcast boost to Server & all connected devices
-    fetch('/api/vote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candId, amount: boostCount })
-    }).catch(() => {});
-
-    this.playSound('inject');
-    this.render();
-    this.logAudit('Inject', `⚡ Secret Boost: Injected +${boostCount} votes to ${cand.name} (Total: ${cand.votes})`);
-  }
-
-  overrideVotes(candId, exactVotes) {
-    const cand = this.candidates.find((c) => c.id === candId);
-    if (!cand) return;
-
-    const val = parseInt(exactVotes, 10);
-    if (isNaN(val) || val < 0) return;
-
-    cand.votes = val;
-    this.saveState();
-    this.playSound('inject');
-    this.render();
-    this.logAudit('Inject', `✏️ Manual Override: Set ${cand.name} votes directly to ${val}`);
-  }
-
   /* ==========================================
      CANDIDATE MANAGEMENT (ADMIN)
      ========================================== */
@@ -996,49 +960,14 @@ class VoteProApp {
             </div>
           </div>
           <div class="admin-cand-stats">
-            <div class="cand-current-votes">${cand.votes.toLocaleString()} Votes</div>
+            <div class="cand-current-votes"><i class="fa-solid fa-check-to-slot"></i> ${cand.votes.toLocaleString()} Official Votes</div>
+            <button class="btn btn-danger btn-sm delete-cand-btn" id="deleteBtn_${cand.id}" title="Delete Candidate">
+              <i class="fa-solid fa-trash"></i> Delete Candidate
+            </button>
           </div>
-        </div>
-
-        <div class="injection-controls-bar">
-          <span class="inject-label"><i class="fa-solid fa-bolt"></i> Secret Boost:</span>
-          <button class="inject-btn" data-id="${cand.id}" data-add="1">+1</button>
-          <button class="inject-btn" data-id="${cand.id}" data-add="2">+2</button>
-          <button class="inject-btn" data-id="${cand.id}" data-add="5">+5</button>
-          <button class="inject-btn" data-id="${cand.id}" data-add="10">+10</button>
-          <button class="inject-btn huge" data-id="${cand.id}" data-add="50">+50</button>
-          <button class="inject-btn huge" data-id="${cand.id}" data-add="100">+100</button>
-
-          <div class="custom-inject-box">
-            <input type="number" class="custom-inject-input" placeholder="Count" min="1" id="customInput_${cand.id}" />
-            <button class="inject-btn" style="background: var(--primary); color:#fff;" id="customInjectBtn_${cand.id}">Inject</button>
-          </div>
-
-          <button class="delete-cand-btn" id="deleteBtn_${cand.id}" title="Delete Candidate">
-            <i class="fa-solid fa-trash"></i>
-          </button>
         </div>
       `;
 
-      // Quick boost buttons
-      item.querySelectorAll('.inject-btn[data-add]').forEach((b) => {
-        b.addEventListener('click', (e) => {
-          const addVal = parseInt(e.target.getAttribute('data-add'), 10);
-          this.injectVotes(cand.id, addVal);
-        });
-      });
-
-      // Custom count injection button
-      item.querySelector(`#customInjectBtn_${cand.id}`).addEventListener('click', () => {
-        const customInput = item.querySelector(`#customInput_${cand.id}`);
-        const count = parseInt(customInput.value, 10);
-        if (count && count > 0) {
-          this.injectVotes(cand.id, count);
-          customInput.value = '';
-        }
-      });
-
-      // Delete button
       item.querySelector(`#deleteBtn_${cand.id}`).addEventListener('click', () => {
         this.deleteCandidate(cand.id);
       });

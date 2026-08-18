@@ -102,12 +102,17 @@ module.exports = (req, res) => {
     }
 
     if (body && body.candId) {
+      if (globalState.status !== 'LIVE') {
+        return sendJSON(res, 400, { error: 'Voting is not live' });
+      }
       const cand = globalState.candidates.find(c => c.id === body.candId);
       if (cand) {
-        cand.votes += (body.amount || 1);
+        cand.votes += 1; // Strictly 1 vote per submission
         globalState.lastUpdated = Date.now();
         syncToSupabase(globalState);
         return sendJSON(res, 200, { success: true, candidates: globalState.candidates });
+      } else {
+        return sendJSON(res, 404, { error: 'Candidate not found' });
       }
     }
 

@@ -87,16 +87,20 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
-        const { candId, amount } = JSON.parse(body);
+        const { candId } = JSON.parse(body);
+        if (electionState.status !== 'LIVE') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: 'Voting is not live' }));
+        }
         const cand = electionState.candidates.find(c => c.id === candId);
         if (cand) {
-          cand.votes += (amount || 1);
+          cand.votes += 1;
           broadcastState();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, candidates: electionState.candidates }));
         } else {
-          res.writeHead(404);
-          res.end('Candidate not found');
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Candidate not found' }));
         }
       } catch (e) {
         res.writeHead(400);
