@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 
 export function getAdminSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
@@ -8,6 +9,11 @@ export function getAdminSupabaseClient() {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
+    },
+    global: {
+      headers: {
+        'x-client-info': 'votepro-admin-server',
+      },
     },
   });
 }
