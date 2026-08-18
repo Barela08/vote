@@ -316,6 +316,28 @@ class VoteProApp {
       if (e.key === 'Enter') this.verifyPin();
     });
 
+    // File Upload change listener
+    const photoFileInput = document.getElementById('candPhotoFile');
+    if (photoFileInput) {
+      photoFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            this.uploadedPhotoBase64 = event.target.result;
+            const previewWrap = document.getElementById('uploadPreviewWrap');
+            const previewImg = document.getElementById('uploadPreviewImg');
+            const previewName = document.getElementById('uploadPreviewName');
+            
+            previewImg.src = this.uploadedPhotoBase64;
+            previewName.textContent = `✓ ${file.name}`;
+            previewWrap.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
     // Preset Avatars selection in Add Candidate Form
     const presetImgs = document.querySelectorAll('#presetAvatars img');
     presetImgs.forEach((img) => {
@@ -323,6 +345,8 @@ class VoteProApp {
         presetImgs.forEach((i) => i.classList.remove('active'));
         e.target.classList.add('active');
         document.getElementById('candAvatar').value = e.target.getAttribute('data-src');
+        this.uploadedPhotoBase64 = null;
+        document.getElementById('uploadPreviewWrap').classList.add('hidden');
       });
     });
 
@@ -585,7 +609,7 @@ class VoteProApp {
   handleAddCandidate() {
     const name = document.getElementById('candName').value.trim();
     const party = document.getElementById('candParty').value.trim();
-    let avatar = document.getElementById('candAvatar').value.trim();
+    let avatar = this.uploadedPhotoBase64 || document.getElementById('candAvatar').value.trim();
     const bio = document.getElementById('candBio').value.trim();
 
     if (!name || !party) return;
@@ -607,8 +631,12 @@ class VoteProApp {
     this.saveState();
     this.render();
 
-    // Reset Form
+    // Reset Form & Photo Upload State
     document.getElementById('addCandidateForm').reset();
+    this.uploadedPhotoBase64 = null;
+    const previewWrap = document.getElementById('uploadPreviewWrap');
+    if (previewWrap) previewWrap.classList.add('hidden');
+
     this.logAudit('Admin', `Added new candidate: ${name}`);
   }
 

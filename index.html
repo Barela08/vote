@@ -164,10 +164,23 @@
                   <input type="text" id="candParty" placeholder="e.g. Progress Party 🚀" required />
                 </div>
                 <div class="form-group">
-                  <label for="candAvatar">Avatar / Image URL (Optional)</label>
+                  <label>Candidate Photo *</label>
+                  <div class="photo-upload-container">
+                    <label for="candPhotoFile" class="custom-file-upload-btn">
+                      <i class="fa-solid fa-cloud-arrow-up"></i> Upload Photo from Device
+                    </label>
+                    <input type="file" id="candPhotoFile" accept="image/*" class="hidden-file-input" />
+                    
+                    <div id="uploadPreviewWrap" class="upload-preview-wrap hidden">
+                      <img id="uploadPreviewImg" src="" alt="Preview" />
+                      <span id="uploadPreviewName">Photo Selected</span>
+                    </div>
+                  </div>
+
+                  <div class="or-divider"><span>OR Use Image URL / Presets</span></div>
                   <input type="url" id="candAvatar" placeholder="https://..." />
                   <div class="avatar-presets">
-                    <span>Quick Preset Avatars:</span>
+                    <span>Quick Presets:</span>
                     <div class="preset-list" id="presetAvatars">
                       <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" data-src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Preset 1" class="preset-img active"/>
                       <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" data-src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" alt="Preset 2" class="preset-img"/>
