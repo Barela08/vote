@@ -1324,3 +1324,145 @@ input:focus {
   gap: 14px;
   justify-content: center;
 }
+
+/* ==========================================================================
+   Comprehensive Mobile & Tablet Responsive Media Queries
+   ========================================================================== */
+
+/* Mobile Phones (up to 640px) */
+@media (max-width: 640px) {
+  .app-container {
+    padding: 12px 14px 40px 14px;
+  }
+
+  .main-header {
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .brand {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .timer-card {
+    padding: 16px;
+  }
+
+  .timer-info {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .timer-display-box {
+    gap: 8px;
+  }
+
+  .time-digit-container {
+    padding: 8px 16px;
+    min-width: 75px;
+  }
+
+  .time-digit-container span:first-child {
+    font-size: 2.2rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .stats-counter {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .stat-box {
+    flex: 1;
+  }
+
+  .candidates-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .admin-header-bar {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .admin-top-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-top-actions .btn {
+    flex: 1 1 45%;
+    justify-content: center;
+  }
+
+  .admin-cand-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .admin-cand-stats {
+    text-align: left;
+  }
+
+  .injection-controls-bar {
+    gap: 6px;
+  }
+
+  .inject-btn {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  .custom-inject-box {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 6px;
+  }
+
+  .custom-inject-input {
+    flex-grow: 1;
+    width: auto !important;
+  }
+
+  .winner-spotlight-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .winner-modal-actions {
+    flex-direction: column;
+  }
+}
+
+/* Tablets & Foldables (641px to 1024px) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .app-container {
+    padding: 16px 20px;
+  }
+
+  .candidates-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
