@@ -82,13 +82,14 @@ class VoteProApp {
       .then(res => res.json())
       .then(state => {
         if (state) {
-          if (Array.isArray(state.candidates) && state.candidates.length > 0) {
-            this.mergeCandidates(state.candidates);
+          if (Array.isArray(state.candidates)) {
+            this.candidates = state.candidates;
           }
           if (state.status) {
             this.status = state.status;
             if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
               clearInterval(this.timerInterval);
+              this.timerInterval = null;
             } else if (this.status === 'LIVE' && !this.timerInterval) {
               this.startTimerLoop();
             }
