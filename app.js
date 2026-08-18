@@ -54,12 +54,35 @@ class VoteProApp {
     setInterval(() => this.fetchServerState(), 2000);
   }
 
+  mergeCandidates(incomingCandidates) {
+    if (!Array.isArray(incomingCandidates)) return;
+
+    const candMap = new Map();
+    // 1. Keep existing local candidates
+    this.candidates.forEach(c => candMap.set(c.id, c));
+
+    // 2. Add or update incoming candidates
+    incomingCandidates.forEach(sc => {
+      if (candMap.has(sc.id)) {
+        const local = candMap.get(sc.id);
+        local.votes = Math.max(local.votes || 0, sc.votes || 0);
+        if (sc.name) local.name = sc.name;
+        if (sc.party) local.party = sc.party;
+        if (sc.avatar) local.avatar = sc.avatar;
+      } else {
+        candMap.set(sc.id, sc);
+      }
+    });
+
+    this.candidates = Array.from(candMap.values());
+  }
+
   fetchServerState() {
     fetch('/api/state')
       .then(res => res.json())
       .then(state => {
         if (state && Array.isArray(state.candidates) && state.candidates.length > 0) {
-          this.candidates = state.candidates;
+          this.mergeCandidates(state.candidates);
           if (state.status) this.status = state.status;
           if (state.timeRemaining !== undefined) this.timeRemaining = state.timeRemaining;
           if (state.totalDuration !== undefined) this.totalDuration = state.totalDuration;
@@ -79,7 +102,7 @@ class VoteProApp {
         channel.on('broadcast', { event: 'state_update' }, (payload) => {
           if (payload && payload.payload && Array.isArray(payload.payload.candidates) && payload.payload.candidates.length > 0) {
             const state = payload.payload;
-            this.candidates = state.candidates;
+            this.mergeCandidates(state.candidates);
             this.status = state.status;
             if (state.timeRemaining !== undefined) this.timeRemaining = state.timeRemaining;
             this.saveCandidates();
@@ -98,7 +121,7 @@ class VoteProApp {
         try {
           const state = JSON.parse(e.data);
           if (state && Array.isArray(state.candidates) && state.candidates.length > 0) {
-            this.candidates = state.candidates;
+            this.mergeCandidates(state.candidates);
             this.status = state.status;
             this.totalDuration = state.totalDuration;
             this.timeRemaining = state.timeRemaining;
