@@ -49,6 +49,9 @@ class VoteProApp {
     this.render();
     this.updateTimerDisplay();
     this.setupRealtimeSync();
+
+    // Global Cloud Database Sync Loop (Every 2 seconds)
+    setInterval(() => this.fetchServerState(), 2000);
   }
 
   fetchServerState() {
