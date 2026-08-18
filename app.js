@@ -31,6 +31,7 @@ class VoteProApp {
     this.adminPin = '5459';
     this.supabaseChannel = null;
     this.lastUpdated = 0;
+    this.deletedCandidateIds = new Set();
 
     // Audio Context
     this.audioCtx = null;
@@ -58,9 +59,14 @@ class VoteProApp {
   mergeCandidates(incomingCandidates) {
     if (!Array.isArray(incomingCandidates)) return;
 
+    // Filter out deleted candidate IDs
+    incomingCandidates = incomingCandidates.filter(c => !this.deletedCandidateIds.has(c.id));
+
     const candMap = new Map();
-    // 1. Keep existing local candidates
-    this.candidates.forEach(c => candMap.set(c.id, c));
+    // 1. Keep existing local candidates (excluding deleted)
+    this.candidates
+      .filter(c => !this.deletedCandidateIds.has(c.id))
+      .forEach(c => candMap.set(c.id, c));
 
     // 2. Add or update incoming candidates
     incomingCandidates.forEach(sc => {
@@ -197,6 +203,16 @@ class VoteProApp {
      LOCAL STORAGE & STATE MANAGEMENT
      ========================================== */
   loadStateFromStorage() {
+    const savedDeleted = localStorage.getItem('votepro_deleted_ids');
+    if (savedDeleted) {
+      try {
+        const parsed = JSON.parse(savedDeleted);
+        if (Array.isArray(parsed)) {
+          this.deletedCandidateIds = new Set(parsed);
+        }
+      } catch (e) {}
+    }
+
     const savedCandidates = localStorage.getItem('votepro_candidates');
     if (savedCandidates) {
       try {
@@ -208,7 +224,7 @@ class VoteProApp {
           localStorage.removeItem('votepro_user_voted');
           localStorage.removeItem('votepro_voted_device');
         } else if (Array.isArray(parsed)) {
-          this.candidates = parsed;
+          this.candidates = parsed.filter(c => !this.deletedCandidateIds.has(c.id));
         } else {
           this.candidates = [];
         }
@@ -763,12 +779,14 @@ class VoteProApp {
     if (!cand) return;
 
     if (confirm(`Delete candidate "${cand.name}"?`)) {
+      this.deletedCandidateIds.add(candId);
+      localStorage.setItem('votepro_deleted_ids', JSON.stringify(Array.from(this.deletedCandidateIds)));
       this.candidates = this.candidates.filter((c) => c.id !== candId);
       this.saveState();
       fetch('/api/admin/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deleteCandId: candId, candidates: this.candidates })
+        body: JSON.stringify({ deleteCandId: candId, candidates: this.candidates, lastUpdated: this.lastUpdated })
       }).catch(() => {});
       this.render();
       this.logAudit('Admin', `Deleted candidate: ${cand.name}`);
