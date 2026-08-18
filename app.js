@@ -458,6 +458,22 @@ class VoteProApp {
       }
     });
 
+    // Admin Login / Admin Panel header button
+    const adminHeaderBtn = document.getElementById('adminLoginHeaderBtn');
+    if (adminHeaderBtn) {
+      adminHeaderBtn.addEventListener('click', () => {
+        if (this.isAdminMode) {
+          if (document.getElementById('adminView').classList.contains('active')) {
+            this.switchView('voter');
+          } else {
+            this.switchView('admin');
+          }
+        } else {
+          this.openPinModal();
+        }
+      });
+    }
+
     // Logout Admin button inside Admin panel
     const logoutBtn = document.getElementById('logoutAdminBtn');
     if (logoutBtn) {
@@ -598,17 +614,31 @@ class VoteProApp {
   switchView(viewName) {
     const voterSec = document.getElementById('voterView');
     const adminSec = document.getElementById('adminView');
+    const adminHeaderBtn = document.getElementById('adminLoginHeaderBtn');
 
     if (viewName === 'admin') {
       voterSec.classList.remove('active');
       voterSec.classList.add('hidden');
       adminSec.classList.remove('hidden');
       adminSec.classList.add('active');
+      if (adminHeaderBtn) {
+        adminHeaderBtn.innerHTML = '<i class="fa-solid fa-users"></i> Voter View';
+        adminHeaderBtn.className = 'btn btn-outline btn-sm';
+      }
     } else {
       adminSec.classList.remove('active');
       adminSec.classList.add('hidden');
       voterSec.classList.remove('hidden');
       voterSec.classList.add('active');
+      if (adminHeaderBtn) {
+        if (this.isAdminMode) {
+          adminHeaderBtn.innerHTML = '<i class="fa-solid fa-user-shield"></i> Admin Panel';
+          adminHeaderBtn.className = 'btn btn-primary btn-sm';
+        } else {
+          adminHeaderBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Admin Login';
+          adminHeaderBtn.className = 'btn btn-primary btn-sm';
+        }
+      }
     }
     this.render();
   }
