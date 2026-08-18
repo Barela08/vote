@@ -82,28 +82,33 @@ class VoteProApp {
 
   applyServerState(state) {
     if (!state) return;
+    const serverTime = state.lastUpdated || 0;
 
     if (Array.isArray(state.candidates)) {
       this.mergeCandidates(state.candidates);
     }
 
-    if (state.status) {
-      this.status = state.status;
-      if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
-        if (this.timerInterval) {
-          clearInterval(this.timerInterval);
-          this.timerInterval = null;
+    // Only accept status and timer from server if server timestamp is equal or newer
+    if (serverTime >= this.lastUpdated) {
+      this.lastUpdated = serverTime;
+      if (state.status) {
+        this.status = state.status;
+        if (this.status === 'PAUSED' || this.status === 'ENDED' || this.status === 'READY') {
+          if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+          }
+        } else if (this.status === 'LIVE' && !this.timerInterval) {
+          this.startTimerLoop();
         }
-      } else if (this.status === 'LIVE' && !this.timerInterval) {
-        this.startTimerLoop();
       }
-    }
 
-    if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
-      this.timeRemaining = state.timeRemaining;
-    }
-    if (state.totalDuration !== undefined) {
-      this.totalDuration = state.totalDuration;
+      if (state.timeRemaining !== undefined && this.status !== 'LIVE') {
+        this.timeRemaining = state.timeRemaining;
+      }
+      if (state.totalDuration !== undefined) {
+        this.totalDuration = state.totalDuration;
+      }
     }
 
     this.saveCandidates();
